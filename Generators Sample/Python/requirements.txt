@@ -1,0 +1,2 @@
+# Add any Python dependencies needed for your async sample
+asyncio
