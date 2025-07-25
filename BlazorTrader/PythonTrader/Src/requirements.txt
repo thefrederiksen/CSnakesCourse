@@ -1,0 +1,11 @@
+yfinance>=0.2.12
+lxml>=4.9.0
+pandas>=2.0.0,<2.3.0
+pandas_ta>=0.3.14b
+numpy>=1.24.0,<2.0.0
+tqdm>=4.64.0
+setuptools>=65.0.0
+xgboost
+scikit-learn
+python-dotenv
+openai

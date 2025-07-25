@@ -1,0 +1,263 @@
+@page "/sundaytrades"
+
+<PageTitle>Sunday Trades</PageTitle>
+
+<div class="mt-3">
+    <button class="btn btn-primary" @onclick="AddTrade">Add Trade</button>
+    <button class="btn btn-secondary" @onclick="RefreshDataAsync">Refresh Data</button>
+</div>
+
+@if (showAddTradeForm)
+{
+    <div class="card mt-3">
+        <div class="card-header">Add New Trade</div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Symbol</label>
+                <div class="position-relative">
+                    <input type="text" 
+                           class="form-control" 
+                           @bind="NewTradeSymbol" 
+                           @bind:event="oninput"
+                           @onfocus="ShowSymbolDropdown"
+                           @onblur="HideSymbolDropdownDelayed"
+                           placeholder="Type to search symbols (e.g., AAPL, MSFT)..." 
+                           autocomplete="off" />
+                    
+                    @if (showSymbolDropdown && filteredSymbols.Any())
+                    {
+                        <div class="dropdown-menu show position-absolute w-100 shadow-sm" 
+                             style="max-height: 200px; overflow-y: auto; z-index: 1000; border: 1px solid #dee2e6;">
+                            @foreach (var symbol in filteredSymbols.Take(10))
+                            {
+                                <button type="button" 
+                                        class="dropdown-item d-flex justify-content-between align-items-center py-2" 
+                                        @onmousedown="() => SelectSymbol(symbol)"
+                                        @onmousedown:preventDefault="true">
+                                    <span class="fw-bold">@symbol</span>
+                                    <small class="text-muted">Select</small>
+                                </button>
+                            }
+                            @if (filteredSymbols.Count > 10)
+                            {
+                                <div class="dropdown-item-text text-muted small">
+                                    Showing first 10 of @filteredSymbols.Count results...
+                                </div>
+                            }
+                        </div>
+                    }
+                    
+                    @if (showSymbolDropdown && !filteredSymbols.Any() && !string.IsNullOrWhiteSpace(NewTradeSymbol))
+                    {
+                        <div class="dropdown-menu show position-absolute w-100 shadow-sm" 
+                             style="z-index: 1000; border: 1px solid #dee2e6;">
+                            <div class="dropdown-item-text text-muted">
+                                No symbols found matching "@NewTradeSymbol"
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Quantity</label>
+                <input type="number" class="form-control" @bind="newTradeQuantity" />
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label">Entry Price</label>
+                <input type="number" step="0.01" class="form-control" @bind="newTradePrice" />
+            </div>
+            
+            <div class="mt-3">
+                <button class="btn btn-success" @onclick="SaveTradeAsync">Save Trade</button>
+                <button class="btn btn-secondary ms-2" @onclick="CancelAddTrade">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mt-4">
+    <h3>Your Sunday Trades</h3>
+    @if (trades.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Symbol</th>
+                        <th>Quantity</th>
+                        <th>Price</th>
+                        <th>Latest Price</th>
+                        <th>Total Value</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var trade in trades.OrderByDescending(t => t.CreatedDate))
+                    {
+                        <tr>
+                            <td>@trade.CreatedDate.ToString("MM/dd/yyyy HH:mm")</td>
+                            <td>@trade.Symbol</td>
+                            <td>@trade.Quantity</td>
+                            <td>$@trade.Price.ToString("F2")</td>
+                            <td>
+                                @if (trade.LatestPrice.HasValue)
+                                {
+                                    var priceChange = trade.LatestPrice.Value - trade.Price;
+                                    var changeClass = priceChange >= 0 ? "text-success" : "text-danger";
+                                    var changeIcon = priceChange >= 0 ? "↗" : "↘";
+                                    <span class="@changeClass">
+                                        $@trade.LatestPrice.Value.ToString("F2") 
+                                        <small>(@changeIcon $@Math.Abs(priceChange).ToString("F2"))</small>
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Loading...</span>
+                                }
+                            </td>
+                            <td>$@trade.TotalValue.ToString("F2")</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger" 
+                                        @onclick="() => RemoveTradeAsync(trade.Id)"
+                                        title="Remove this trade">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No trades found. Add your first trade to get started!
+        </div>
+    }
+    
+    <div class="mt-3">
+        <button class="btn btn-primary me-2" @onclick="RunPredictionsAsync" disabled="@(isRunningPredictions)">Run Predictions</button>
+        @if (isRunningPredictions)
+        {
+            <div class="mt-2">
+                <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                <span>Running predictions... (@predictionsProgress%)</span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(predictionsCompletionMessage))
+        {
+            <div class="alert alert-info mt-2">@predictionsCompletionMessage</div>
+        }
+    </div>
+
+    @if (_mustBuyList != null && _mustBuyList.Any())
+    {
+        <div class="mt-4">
+            <h4>Must Buy Predictions</h4>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Date</th>
+                            <th>Prediction</th>
+                            <th>Latest Price</th>
+                            <th>Chart</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var prediction in _mustBuyList.OrderBy(p => p.Symbol))
+                        {
+                            <tr>
+                                <td><strong>@prediction.Symbol</strong></td>
+                                <td>@prediction.Date.ToString("MM/dd/yyyy")</td>
+                                <td><span class="badge bg-success">@prediction.Prediction</span></td>
+                                <td>
+                                    @if (prediction.LatestPrice.HasValue)
+                                    {
+                                        <span class="text-primary fw-bold">$@prediction.LatestPrice.Value.ToString("F2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">N/A</span>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="https://finance.yahoo.com/quote/@prediction.Symbol/" 
+                                       target="_blank" 
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="View @prediction.Symbol chart on Yahoo Finance">
+                                        <i class="bi bi-graph-up"></i> Chart
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    <div class="mt-4">
+        <h4>Trading Plan Instructions</h4>
+        <div class="form-group">
+            <label for="tradingPlanInstructions" class="form-label">
+                Instructions
+            </label>
+            <textarea 
+                id="tradingPlanInstructions"
+                class="form-control" 
+                rows="6" 
+                placeholder="Enter your trading plan instructions here..."
+                @bind="TradingPlanInstructions">
+            </textarea>
+            <div class="mt-2">
+                <button class="btn btn-primary me-2" @onclick="SaveTradingPlanInstructionsAsync">
+                    <i class="bi bi-save"></i> Save Instructions
+                </button>
+                <button class="btn btn-success" @onclick="CreateTradePlanAsync" disabled="@(_isGeneratingTradePlan)">
+                    <i class="bi bi-file-earmark-text"></i> Create Trade Plan
+                    @if (_isGeneratingTradePlan)
+                    {
+                        <span class="spinner-border spinner-border-sm ms-1" role="status"></span>
+                    }
+                </button>
+                
+            </div>
+            
+            @if (_isGeneratingTradePlan)
+            {
+                <div class="mt-2">
+                    <div class="alert alert-info">
+                        <i class="bi bi-gear-fill"></i> Generating trading plan...
+                    </div>
+                </div>
+            }
+            
+            @if (!string.IsNullOrEmpty(_tradingPlan))
+            {
+                <div class="mt-4">
+                    <h4>Generated Trading Plan</h4>
+                    <div class="form-group">
+                        <textarea 
+                            class="form-control" 
+                            rows="12" 
+                            readonly
+                            style="font-family: 'Courier New', monospace; font-size: 0.9em; background-color: #f8f9fa;">
+                            @_tradingPlan
+                        </textarea>
+                        <div class="mt-2">
+                            <button class="btn btn-outline-secondary btn-sm" @onclick="() => { _tradingPlan = string.Empty; StateHasChanged(); }">
+                                <i class="bi bi-trash"></i> Clear Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,0 +1,340 @@
+@page "/tradertraining"
+
+<h1>Trader Training</h1>
+<p>Train the AI used for trading with comprehensive data processing and machine learning modules.</p>
+<p>
+    <strong>Data Directory:</strong> @UserDataDirectory
+</p>
+
+@if (!string.IsNullOrEmpty(pythonWarningMessage))
+{
+    <div class="alert alert-warning mt-3" role="alert">
+        <strong>Python Warning:</strong> @pythonWarningMessage
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h3>AI Training Pipeline</h3>
+        <p class="text-muted">Execute the AI training pipeline in sequence to prepare your trading model.</p>
+        
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">AI Training Steps</h5>
+                <p class="card-text">Follow these steps to train your AI trading model with the latest market data.</p>
+                
+                <div class="d-grid gap-3">
+                    <div>
+                        <button class="btn btn-primary btn-lg w-100" @onclick="DownloadSpData" disabled="@isDownloading">
+                            @if (isDownloading)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="ms-2">Downloading...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-download"></i>
+                                <span class="ms-1">Download S&P Data</span>
+                            }
+                        </button>
+                        
+                        @if (isDownloading)
+                        {
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Download Progress</small>
+                                    <small class="text-muted">@downloadProgress of @totalSymbols symbols</small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" 
+                                         style="width: @(downloadProgressPercentage)%" 
+                                         aria-valuenow="@downloadProgressPercentage" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        @downloadProgressPercentage%
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(downloadCompletionMessage))
+                        {
+                            <div class="mt-2">
+                                <div class="alert @(dataDownloaded ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                                    @downloadCompletionMessage
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
+                    <div>
+                        <button class="btn btn-info btn-lg w-100" @onclick="CreateIndicators" disabled="@isCreatingIndicators">
+                            @if (isCreatingIndicators)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="ms-2">Creating Indicators...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-graph-up"></i>
+                                <span class="ms-1">Create Indicators</span>
+                            }
+                        </button>
+                        
+                        @if (isCreatingIndicators)
+                        {
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Indicators Progress</small>
+                                    <small class="text-muted">@indicatorsProgress of @totalSymbols symbols</small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                                         role="progressbar" 
+                                         style="width: @(indicatorsProgressPercentage)%" 
+                                         aria-valuenow="@indicatorsProgressPercentage" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        @indicatorsProgressPercentage%
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        
+                        @if (!string.IsNullOrEmpty(indicatorsCompletionMessage))
+                        {
+                            <div class="mt-2">
+                                <div class="alert @(indicatorsCreated ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                                    @indicatorsCompletionMessage
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
+                    <div>
+                        <button class="btn btn-warning btn-lg w-100" @onclick="CreateTrainingData" disabled="@isCreatingTrainingData">
+                            @if (isCreatingTrainingData)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="ms-2">Creating Training Data...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-database"></i>
+                                <span class="ms-1">Create Training Data</span>
+                            }
+                        </button>
+                        @if (isCreatingTrainingData)
+                        {
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">Training Data Progress</small>
+                                    <small class="text-muted">@trainingDataProgress%</small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                                         role="progressbar"
+                                         style="width: @(trainingDataProgress)%"
+                                         aria-valuenow="@trainingDataProgress"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        @trainingDataProgress%
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(trainingDataCompletionMessage))
+                        {
+                            <div class="mt-2">
+                                <div class="alert @(trainingDataCreated ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert">
+                                    @trainingDataCompletionMessage
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    
+                    <div>
+                        <button class="btn btn-success btn-lg w-100" @onclick="TrainXGBoost" disabled="@isTrainingXGBoost">
+                            @if (isTrainingXGBoost)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="ms-2">Training XGBoost...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-cpu"></i>
+                                <span class="ms-1">Train XGBoost</span>
+                            }
+                        </button>
+                        @if (isTrainingXGBoost)
+                        {
+                            <div class="mt-2">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <small class="text-muted">XGBoost Training Progress</small>
+                                    <small class="text-muted">@xgboostProgress%</small>
+                                </div>
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                         role="progressbar"
+                                         style="width: @(xgboostProgress)%"
+                                         aria-valuenow="@xgboostProgress"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        @xgboostProgress%
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(xgboostCompletionMessage))
+                        {
+                            <div class="mt-2">
+                                <div class="alert @(modelTrained ? "alert-success" : "alert-danger") alert-dismissible fade show" role="alert" style="white-space:pre-wrap; max-height:400px; overflow:auto;">
+                                    <pre style="margin:0; background:none; border:none; padding:0; font-family:inherit;">@xgboostCompletionMessage</pre>
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                    <div>
+                        <button class="btn btn-secondary btn-lg w-100 mt-2" @onclick="ExplainTrainingResults" disabled="@isExplainingResults">
+                            @if (isExplainingResults)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="ms-2">Explaining Training Results...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-chat-left-text"></i>
+                                <span class="ms-1">Explain Training Results</span>
+                            }
+                        </button>
+                        @if (!string.IsNullOrEmpty(trainingExplanation))
+                        {
+                            <div class="mt-2">
+                                <div class="alert alert-info" role="alert" style="overflow-y: auto; overflow-x: hidden; max-height: 300px;">
+                                    <pre style=" white-space: pre-wrap;
+                                                word-wrap: break-word;
+                                                overflow-wrap: break-word;
+                                                margin: 0;
+                                                background: none;
+                                                border: none;
+                                                padding: 0;
+                                                font-family: inherit;
+                                                max-height: 250px;
+                                                overflow-y: auto;
+                                                overflow-x: hidden;
+                                            ">
+                    @trainingExplanation
+                </pre>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <button class="btn btn-danger w-100 mb-3" @onclick="ShowClearDataWarning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Clear All Data
+        </button>
+        @if (showClearDataWarning)
+        {
+            <div class="alert alert-warning" role="alert">
+                <strong>Warning:</strong> This will permanently remove all S&amp;P data and all trained models. Are you sure?
+                <div class="mt-2 d-flex justify-content-end gap-2">
+                    <button class="btn btn-danger btn-sm" @onclick="ClearAllData">Yes, Delete All</button>
+                    <button class="btn btn-secondary btn-sm" @onclick="() => showClearDataWarning = false">Cancel</button>
+                </div>
+            </div>
+        }
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Training Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Pipeline Progress</span>
+                        <span>@completedSteps/4</span>
+                    </div>
+                    <div class="progress">
+                        <div class="progress-bar" 
+                             role="progressbar" 
+                             style="width: @(completionPercentage)%" 
+                             aria-valuenow="@completionPercentage" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                            @(completionPercentage)%
+                        </div>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="text-center">
+                    <h6>Step Status</h6>
+                    <div class="mb-2">
+                        <span class="@(dataDownloaded ? "text-success" : "text-muted")">
+                            <i class="bi @(dataDownloaded ? "bi-check-circle-fill" : "bi-circle")"></i>
+                            S&P Data Downloaded
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="@(indicatorsCreated ? "text-success" : "text-muted")">
+                            <i class="bi @(indicatorsCreated ? "bi-check-circle-fill" : "bi-circle")"></i>
+                            Indicators Created
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="@(trainingDataCreated ? "text-success" : "text-muted")">
+                            <i class="bi @(trainingDataCreated ? "bi-check-circle-fill" : "bi-circle")"></i>
+                            Training Data Ready
+                        </span>
+                    </div>
+                    <div class="mb-2">
+                        <span class="@(modelTrained ? "text-success" : "text-muted")">
+                            <i class="bi @(modelTrained ? "bi-check-circle-fill" : "bi-circle")"></i>
+                            XGBoost Model Trained
+                        </span>
+                    </div>
+                </div>
+                
+                @if (completionPercentage == 100)
+                {
+                    <div class="alert alert-success mt-3" role="alert">
+                        <i class="bi bi-trophy"></i> AI Training Pipeline Complete!
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Training Tips</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="bi bi-lightbulb text-warning"></i>
+                        Run steps in sequential order
+                    </li>
+                    <li class="mb-2">
+                        <i class="bi bi-lightbulb text-warning"></i>
+                        Monitor market conditions before training
+                    </li>
+                    <li class="mb-0">
+                        <i class="bi bi-lightbulb text-warning"></i>
+                        Retrain regularly with fresh data
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>

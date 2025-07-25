@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="PythonTrader\Src\a_download_sp500_data.py" />
+    <None Remove="PythonTrader\Src\b_calculate_indicators.py" />
+    <None Remove="PythonTrader\Src\c_create_training_data.py" />
+    <None Remove="PythonTrader\Src\d_train_xgboost.py" />
+    <None Remove="PythonTrader\Src\e_explain_xgboost_results.py" />
+    <None Remove="PythonTrader\Src\f_predict.py" />
+    <None Remove="PythonTrader\Src\g_llm_knowledge.py" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PythonTrader\Src\a_download_sp500_data.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\b_calculate_indicators.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\c_create_training_data.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\d_train_xgboost.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\e_explain_xgboost_results.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\f_predict.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+    <AdditionalFiles Include="PythonTrader\Src\g_llm_knowledge.py">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CSnakes.Runtime" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="PythonTrader\Src\requirements.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
