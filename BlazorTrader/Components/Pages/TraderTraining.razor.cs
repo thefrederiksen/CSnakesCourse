@@ -347,7 +347,7 @@ public partial class TraderTraining : ComponentBase
         try
         {
             // Set the OPENAI_API_KEY environment variable from config
-            var openAiKey = Configuration["OpenAI:ApiKey"];
+            var openAiKey = Configuration["OPENAI_API_KEY"];
 
             var instrctions = "Explain the results of the XGBoost model training in detail, including feature importance and model performance metrics. Provide insights into how the model can be improved based on the training data and results.";
 
