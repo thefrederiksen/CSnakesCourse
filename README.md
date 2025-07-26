@@ -19,7 +19,7 @@ I'm available to help and support you throughout this course! Don't hesitate to 
 
 ## 🚀 Course Overview
 
-This hands-on course takes you through **13 progressive projects** that demonstrate real-world C# and Python interoperability using CSnakes. From basic "Hello World" examples to production-ready trading applications with machine learning backends, you'll master the art of embedding Python seamlessly into .NET applications.
+This hands-on course takes you through **15 progressive projects** that demonstrate real-world C# and Python interoperability using CSnakes. From basic "Hello World" examples to production-ready trading applications with machine learning backends, you'll master the art of embedding Python seamlessly into .NET applications.
 
 **What makes this course unique:**
 - Real-world production patterns and best practices
@@ -67,31 +67,32 @@ Build your understanding of CSnakes fundamentals
 | **03. Collections & Tuples** | Complex Data | Working with lists, dictionaries, and tuples |
 | **04. Managing Python** | Environment Management | Virtual environments and package management |
 
-### **Intermediate Projects (5-8)**
+### **Intermediate Projects (5-10)**
 Explore advanced integration patterns
 
 | Project | Focus Area | Key Learning |
 |---------|------------|--------------|
-| **05. NumPy Integration** | Scientific Computing | NumPy arrays and buffer sharing |
-| **06. Advanced NumPy** | Performance | Memory-efficient array operations |
-| **07. Exception Handling** | Error Management | Robust error handling across languages |
-| **08. DataTable Sample** | Data Processing | Working with structured data |
+| **06. NumPy1** | Scientific Computing | NumPy arrays and buffer sharing |
+| **07. Numpy2** | Performance | Memory-efficient array operations |
+| **08. CSnakes Exceptions** | Error Management | Robust error handling across languages |
+| **09. DataTable Sample** | Data Processing | Working with structured data |
+| **10. KMeans In Process** | Machine Learning | In-process ML with scikit-learn |
 
-### **Advanced Projects (9-13)**
+### **Advanced Projects (11-15)**
 Master production-ready applications
 
 | Project | Focus Area | Key Learning |
 |---------|------------|--------------|
-| **09. KMeans Clustering** | Machine Learning | In-process ML with scikit-learn |
-| **10. Async Python** | Concurrency | Asynchronous Python operations |
-| **11. Format Markdown** | Text Processing | Document generation and formatting |
-| **12. Generators** | Memory Efficiency | Python generators in C# applications |
-| **13. BlazorTrader** | Full Application | Complete trading system with ML backend |
+| **12. Format Markdown** | Text Processing | Document generation and formatting |
+| **13. Generators Sample** | Memory Efficiency | Python generators in C# applications |
+| **14. Progress From Python** | Progress Reporting | Async progress updates from Python |
+| **15. Async Python** | Concurrency | Asynchronous Python operations |
+| **BlazorTrader** | Full Application | Complete trading system with ML backend |
 
 ### **Specialized Applications**
 
 - **TalkToMyCode**: WinForms application for AI-powered code analysis
-- **TestPython/ProgressFromPython**: Testing patterns and progress reporting
+- **TestPython**: Testing patterns and Python integration verification
 
 ---
 
