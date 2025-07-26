@@ -1,0 +1,8 @@
+nltk>=3.8
+wordcloud>=1.9.2
+PyPDF2>=3.0.1
+python-docx>=0.8.11
+markdown>=3.5.1
+matplotlib>=3.7.0
+Pillow>=10.0.0
+numpy>=1.24.0

@@ -256,7 +256,7 @@ def get_exception_info() -> Dict[str, Any]:
             try:
                 # Only include simple types to avoid serialization issues
                 if isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                    locals_dict[key] = str(value)
+                    locals_dict[key] = str(value)1
             except:
                 locals_dict[key] = "<unable to serialize>"
     
