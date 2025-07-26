@@ -1,0 +1,71 @@
+name: Python Dependencies Test
+
+# Trigger when Python requirements files change
+on:
+  push:
+    paths:
+      - '**/requirements.txt'
+      - '**/Python/**'
+  pull_request:
+    paths:
+      - '**/requirements.txt'
+      - '**/Python/**'
+
+jobs:
+  test-python-compatibility:
+    name: Test Python Dependencies
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    # Test each requirements.txt file
+    - name: Test FaceVault Python deps (if exists)
+      if: runner.os == 'Windows'
+      run: |
+        if (Test-Path "FaceVault/Python/requirements.txt") {
+          pip install -r FaceVault/Python/requirements.txt
+          python -c "import sys; print(f'Python {sys.version} - FaceVault deps OK')"
+        }
+      shell: powershell
+      
+    - name: Test BlazorTrader Python deps
+      run: |
+        if [ -f "BlazorTrader/PythonTrader/Src/requirements.txt" ]; then
+          pip install -r BlazorTrader/PythonTrader/Src/requirements.txt
+          python -c "import sys; print(f'Python {sys.version} - BlazorTrader deps OK')"
+        fi
+      shell: bash
+      
+    - name: Test PythonTextAnalytics deps
+      run: |
+        if [ -f "PythonTextAnalytics/Python/requirements.txt" ]; then
+          pip install -r PythonTextAnalytics/Python/requirements.txt
+          python -c "import sys; print(f'Python {sys.version} - TextAnalytics deps OK')"
+        fi
+      shell: bash
+      
+    # Test basic CSnakes integration on Windows only (since FaceVault targets Windows)
+    - name: Test CSnakes Integration
+      if: runner.os == 'Windows'
+      run: |
+        dotnet restore FaceVault.sln
+        dotnet build FaceVault.sln --configuration Release
+        dotnet test FaceVault.Tests/ --configuration Release

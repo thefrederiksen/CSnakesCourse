@@ -1,0 +1,84 @@
+name: FaceVault CI
+
+# Trigger the workflow on push and pull requests
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'FaceVault/**'
+      - 'FaceVault.Tests/**'
+      - 'FaceVault.sln'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'FaceVault/**'
+      - 'FaceVault.Tests/**' 
+      - 'FaceVault.sln'
+
+jobs:
+  test:
+    name: Build and Test FaceVault
+    runs-on: windows-latest
+    
+    steps:
+    # Checkout the code
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    # Setup .NET 9
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    # Setup Python (needed for CSnakes)
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        
+    # Restore NuGet packages
+    - name: Restore dependencies
+      run: dotnet restore FaceVault.sln
+      
+    # Build the solution
+    - name: Build solution
+      run: dotnet build FaceVault.sln --configuration Release --no-restore
+      
+    # Install Python dependencies for FaceVault
+    - name: Install FaceVault Python dependencies
+      run: |
+        cd FaceVault/Python
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      
+    # Run Python tests independently
+    - name: Run Python tests
+      run: |
+        cd FaceVault/Python
+        python run_tests.py --coverage --verbose
+      
+    # Run C# unit tests
+    - name: Run C# tests
+      run: dotnet test FaceVault.Tests/FaceVault.Tests.csproj --configuration Release --no-build --verbosity normal --logger trx
+      
+    # Upload test results
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          **/*.trx
+          **/htmlcov/
+          **/coverage.xml
+        
+    # Upload build artifacts (optional)
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: facevault-build
+        path: |
+          FaceVault/bin/Release/
+          FaceVault.Tests/bin/Release/

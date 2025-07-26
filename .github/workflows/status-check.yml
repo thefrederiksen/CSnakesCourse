@@ -1,0 +1,28 @@
+name: Status Check
+
+# Run on every push and PR for status badges
+on:
+  push:
+  pull_request:
+
+jobs:
+  quick-status:
+    name: Quick Build Status
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Quick restore and build check
+      run: |
+        dotnet restore FaceVault.sln
+        dotnet build FaceVault.sln --configuration Debug --no-restore
+        
+    - name: Quick test run
+      run: dotnet test FaceVault.Tests/FaceVault.Tests.csproj --configuration Debug --no-build --verbosity minimal

@@ -1,0 +1,224 @@
+@page "/logs"
+@using FaceVault.Services
+@using System.IO
+@implements IDisposable
+
+<PageTitle>System Logs - FaceVault</PageTitle>
+
+<h1>System Logs</h1>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <button class="btn btn-primary" @onclick="RefreshLogs">
+            <span class="oi oi-reload" aria-hidden="true"></span> Refresh
+        </button>
+        <button class="btn btn-secondary ms-2" @onclick="AutoRefreshToggle">
+            @if (autoRefresh)
+            {
+                <span class="oi oi-media-pause" aria-hidden="true"></span> <text>Stop Auto Refresh</text>
+            }
+            else
+            {
+                <span class="oi oi-media-play" aria-hidden="true"></span> <text>Start Auto Refresh</text>
+            }
+        </button>
+    </div>
+    <div class="col-md-6 text-end">
+        <small class="text-muted">Last updated: @lastUpdated.ToString("HH:mm:ss")</small>
+    </div>
+</div>
+
+@if (logFiles.Any())
+{
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label for="logFileSelect" class="form-label">Select Log File:</label>
+            <select id="logFileSelect" class="form-select" @bind="selectedLogFile" @bind:after="LoadSelectedLogFile">
+                @foreach (var file in logFiles)
+                {
+                    <option value="@file.FullName">@file.Name (@(file.Length / 1024)KB)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="lineCount" class="form-label">Lines to show:</label>
+            <select id="lineCount" class="form-select" @bind="linesToShow" @bind:after="LoadSelectedLogFile">
+                <option value="50">Last 50 lines</option>
+                <option value="100">Last 100 lines</option>
+                <option value="200">Last 200 lines</option>
+                <option value="500">Last 500 lines</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Log Content</h5>
+            <small class="text-muted">@logLines.Count lines</small>
+        </div>
+        <div class="card-body">
+            <pre class="bg-dark text-light p-3 rounded" style="height: 500px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px;">@string.Join("\n", logLines)</pre>
+        </div>
+    </div>
+}
+else
+{
+    <div class="alert alert-info">
+        <h4>No log files found</h4>
+        <p>Log files will appear here once the application starts logging. The logs directory is: <code>@logsDirectory</code></p>
+    </div>
+}
+
+<div class="mt-4">
+    <h4>Live Log Messages</h4>
+    <div class="card">
+        <div class="card-body" style="height: 300px; overflow-y: auto;">
+            @if (liveLogMessages.Any())
+            {
+                @foreach (var message in liveLogMessages.TakeLast(50))
+                {
+                    <div class="mb-1">
+                        <small class="text-muted">@message.Timestamp.ToString("HH:mm:ss.fff")</small>
+                        <span class="badge bg-@GetLogLevelColor(message.Level) ms-2">@message.Level</span>
+                        <span class="ms-2">@message.Message</span>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted">No live log messages yet...</p>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<FileInfo> logFiles = new();
+    private List<string> logLines = new();
+    private List<LogEntry> liveLogMessages = new();
+    private string selectedLogFile = "";
+    private int linesToShow = 100;
+    private DateTime lastUpdated = DateTime.Now;
+    private bool autoRefresh = false;
+    private Timer? refreshTimer;
+    private string logsDirectory = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        logsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+        
+        // Subscribe to live log events
+        Logger.LogMessage += OnLogMessage;
+        
+        await LoadLogFiles();
+        
+        if (logFiles.Any())
+        {
+            selectedLogFile = logFiles.First().FullName;
+            await LoadSelectedLogFile();
+        }
+    }
+
+    private void OnLogMessage(object? sender, LogEventArgs e)
+    {
+        InvokeAsync(() =>
+        {
+            liveLogMessages.Add(e.Entry);
+            StateHasChanged();
+        });
+    }
+
+    private Task LoadLogFiles()
+    {
+        try
+        {
+            if (Directory.Exists(logsDirectory))
+            {
+                var directory = new DirectoryInfo(logsDirectory);
+                logFiles = directory.GetFiles("*.log")
+                    .OrderByDescending(f => f.LastWriteTime)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            logLines = new List<string> { $"Error loading log files: {ex.Message}" };
+        }
+        
+        lastUpdated = DateTime.Now;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadSelectedLogFile()
+    {
+        if (string.IsNullOrEmpty(selectedLogFile) || !File.Exists(selectedLogFile))
+        {
+            logLines = new List<string> { "Selected log file not found." };
+            return;
+        }
+
+        try
+        {
+            var lines = await File.ReadAllLinesAsync(selectedLogFile);
+            logLines = lines.TakeLast(linesToShow).ToList();
+        }
+        catch (Exception ex)
+        {
+            logLines = new List<string> { $"Error reading log file: {ex.Message}" };
+        }
+        
+        lastUpdated = DateTime.Now;
+        StateHasChanged();
+    }
+
+    private async Task RefreshLogs()
+    {
+        await LoadLogFiles();
+        if (!string.IsNullOrEmpty(selectedLogFile))
+        {
+            await LoadSelectedLogFile();
+        }
+    }
+
+    private void AutoRefreshToggle()
+    {
+        if (autoRefresh)
+        {
+            autoRefresh = false;
+            refreshTimer?.Dispose();
+            refreshTimer = null;
+        }
+        else
+        {
+            autoRefresh = true;
+            refreshTimer = new Timer(async _ =>
+            {
+                await InvokeAsync(async () =>
+                {
+                    await RefreshLogs();
+                });
+            }, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
+        }
+        StateHasChanged();
+    }
+
+    private string GetLogLevelColor(LogLevel level)
+    {
+        return level switch
+        {
+            LogLevel.Debug => "secondary",
+            LogLevel.Info => "primary",
+            LogLevel.Warning => "warning",
+            LogLevel.Error => "danger",
+            LogLevel.Critical => "danger",
+            _ => "secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        Logger.LogMessage -= OnLogMessage;
+        refreshTimer?.Dispose();
+    }
+}

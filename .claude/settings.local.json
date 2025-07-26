@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet build:*)"
+      "Bash(dotnet build:*)",
+      "Bash(dotnet new:*)",
+      "Bash(move Form1.cs MainForm.cs)",
+      "Bash(ren:*)",
+      "Bash(rm:*)",
+      "Bash(dotnet sln:*)"
     ],
     "deny": []
   }

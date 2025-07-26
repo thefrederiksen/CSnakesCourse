@@ -1,0 +1,81 @@
+name: CSnakes Course CI
+
+# Trigger on any push to main or pull requests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build All CSnakes Projects
+    runs-on: windows-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test different configurations
+        configuration: [Debug, Release]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        
+    # Install common Python dependencies
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Install common packages used across projects
+        pip install numpy pandas scikit-learn face_recognition opencv-python Pillow
+        pip install nltk wordcloud matplotlib seaborn
+        pip install xgboost yfinance ta
+        
+    # Restore all projects
+    - name: Restore dependencies
+      run: dotnet restore "CSnakes Course.sln"
+      
+    # Build entire solution
+    - name: Build solution
+      run: dotnet build "CSnakes Course.sln" --configuration ${{ matrix.configuration }} --no-restore
+      
+    # Run FaceVault tests specifically
+    - name: Run FaceVault tests
+      run: dotnet test FaceVault.Tests/FaceVault.Tests.csproj --configuration ${{ matrix.configuration }} --no-build --verbosity normal --logger trx
+      
+    # Test individual projects can run without errors
+    - name: Test HelloWorld
+      run: dotnet run --project "HelloWorld/01. HelloWorld.csproj" --configuration ${{ matrix.configuration }} --no-build
+      timeout-minutes: 2
+      
+    - name: Test Primitives
+      run: dotnet run --project "Primitives_And_Return_Types/02. Primitives_And_Return_Types.csproj" --configuration ${{ matrix.configuration }} --no-build
+      timeout-minutes: 2
+      
+    # Upload test results
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.configuration }}
+        path: "**/*.trx"
+        
+    # Upload logs for debugging
+    - name: Upload logs
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: logs-${{ matrix.configuration }}
+        path: |
+          **/Logs/
+          **/*.log
