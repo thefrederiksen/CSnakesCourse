@@ -12,7 +12,13 @@ namespace BlazorTrader
         {
             try
             {
+                // Load environment variables from .env file
+                EnvLoader.Load();
+                
                 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+                
+                // Add environment variable configuration
+                builder.Configuration.AddEnvironmentVariables();
 
                 Console.WriteLine("Initializing python...");
 

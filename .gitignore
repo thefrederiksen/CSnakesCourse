@@ -485,3 +485,10 @@ cython_debug/
 *.cpython-*.so
 python-*-embed-*/
 .python/
+
+# API Keys and secrets (do not check in)
+**/appsettings.local.json
+**/*secrets*.json
+.env
+.env.local
+.env.*.local

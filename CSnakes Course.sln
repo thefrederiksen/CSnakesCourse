@@ -21,7 +21,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestPython", "TestPython\Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "08. CSnakesExceptions", "CSnakesExceptions\08. CSnakesExceptions.csproj", "{83B4079E-4560-4234-A4B9-E8C6030A9197}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProgressFromPython", "ProgressFromPython\ProgressFromPython.csproj", "{7EDAD315-13C8-4EDE-8B14-BAD384B383AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "14. ProgressFromPython", "ProgressFromPython\14. ProgressFromPython.csproj", "{7EDAD315-13C8-4EDE-8B14-BAD384B383AA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TalkToMyCode", "TalkToMyCode\TalkToMyCode.csproj", "{3DB59472-EF12-417C-BB0C-1E83221524F5}"
 EndProject
@@ -31,7 +31,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "10. KMeans In Process", "KM
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "12 Format Markdown", "Format Markdown\12 Format Markdown.csproj", "{DFD2AB16-05B3-499E-85AD-E495C91B0FCA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "14. Async Python", "Async Python\14. Async Python.csproj", "{5FB2378B-837D-447D-9DAA-DC7D6837CD0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "15. Async Python", "Async Python\15. Async Python.csproj", "{5FB2378B-837D-447D-9DAA-DC7D6837CD0D}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "13. Generators Sample", "Generators Sample\13. Generators Sample.csproj", "{2B529546-7A19-4F6B-8972-B701D18ADFA2}"
 EndProject
