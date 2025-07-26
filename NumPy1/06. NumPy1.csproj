@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="numpy_buffer.py">
+    <AdditionalFiles Include="Python\numpy_buffer.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AdditionalFiles>
   </ItemGroup>
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="requirements.txt">
+    <None Update="Python\requirements.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

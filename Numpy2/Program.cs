@@ -11,19 +11,26 @@ namespace Numpy2
     {
         static async Task Main(string[] args)
         {
-            var home = Path.Join(Environment.CurrentDirectory, ".");
-            string requirements = "requirements.txt";
+            Console.WriteLine("=== CSnakes Lab : NumPy2 ===\n");
 
+            // ── 1. Locate the Python home folder (sits beside the EXE) ──────────
+            var exeDir = Path.GetDirectoryName(
+                                    System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+            var pythonHomeDir = Path.Join(exeDir, "Python");          // contains kmeans_sample.py
+            var virtualDir = Path.Join(pythonHomeDir, ".venv_uv"); // will be created on first run
+            var requirements = Path.Combine(pythonHomeDir, "requirements.txt");
+
+            // ── 2. Build the host & configure CSnakes runtime ──────────────────
             var builder = Host.CreateApplicationBuilder();
-            var services = builder.Services
-                .WithPython()
-                .WithHome(home)
-                .FromRedistributable() // Ensures Python is available 
-
-                .WithVirtualEnvironment(Path.Join(home, ".venv"));
-                //.WithUvInstaller(); // Install packages like numpy automatically
+            builder.Services
+                   .WithPython()
+                       .WithHome(pythonHomeDir)
+                       .FromRedistributable("3.12")    // downloads CPython the very first time
+                       .WithVirtualEnvironment(virtualDir)
+                       .WithUvInstaller(requirements);
 
             using var host = builder.Build();
+
             await host.StartAsync();
 
             var env = host.Services.GetRequiredService<IPythonEnvironment>();
