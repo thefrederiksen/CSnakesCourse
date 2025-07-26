@@ -38,10 +38,10 @@ Choose your platform for detailed setup instructions:
 📖 **[Complete Windows Setup Guide](./setup/setup_windows.md)**
 
 ### macOS Setup
-📖 **[macOS Setup Guide](./setup/setup_macos.md)** *(TBD)*
+📖 **[macOS Setup Guide](./setup/setup_macos.md)**
 
 ### Linux Setup  
-📖 **[Linux Setup Guide](./setup/setup_linux.md)** *(TBD)*
+📖 **[Linux Setup Guide](./setup/setup_linux.md)**
 
 ---
 

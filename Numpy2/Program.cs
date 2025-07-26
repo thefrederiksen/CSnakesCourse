@@ -20,8 +20,8 @@ namespace Numpy2
                 .WithHome(home)
                 .FromRedistributable() // Ensures Python is available 
 
-                .WithVirtualEnvironment(Path.Join(home, ".venv"))
-                .WithUvInstaller(requirements); // Install packages like numpy automatically
+                .WithVirtualEnvironment(Path.Join(home, ".venv"));
+                //.WithUvInstaller(); // Install packages like numpy automatically
 
             using var host = builder.Build();
             await host.StartAsync();
