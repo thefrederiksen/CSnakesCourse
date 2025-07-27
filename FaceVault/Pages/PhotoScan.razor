@@ -17,42 +17,36 @@
                 <h5 class="mb-0"><span class="oi oi-magnifying-glass" aria-hidden="true"></span> Scan Configuration</h5>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-9">
-                        <div class="mb-3">
-                            <label for="scanDirectory" class="form-label">Directory to Scan</label>
-                            <input type="text" class="form-control" id="scanDirectory" 
-                                   @bind="scanDirectory" placeholder="Select directory to scan...">
-                            <div class="form-text">Choose the folder containing photos to scan</div>
-                        </div>
+                <div class="mb-3">
+                    <label class="form-label">Directory to Scan</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="@scanDirectory" readonly>
+                        <span class="input-group-text text-muted">
+                            <span class="oi oi-lock-locked" aria-hidden="true"></span>
+                        </span>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">&nbsp;</label>
-                        <button class="btn btn-outline-primary w-100" @onclick="BrowseForDirectory">
-                            <span class="oi oi-folder" aria-hidden="true"></span> Browse
-                        </button>
-                    </div>
+                    <div class="form-text">To change the scan directory, go to <a href="/settings">Settings</a></div>
                 </div>
                 
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="includeSubdirectories" 
-                                   @bind="includeSubdirectories">
-                            <label class="form-check-label" for="includeSubdirectories">
+                <div class="mb-3">
+                    <label class="form-label">Scan Options</label>
+                    <div class="list-group">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="oi oi-@(includeSubdirectories ? "check" : "x") text-@(includeSubdirectories ? "success" : "muted")" aria-hidden="true"></span>
                                 Include subdirectories
-                            </label>
+                            </div>
+                            <small class="text-muted">@(includeSubdirectories ? "Enabled" : "Disabled")</small>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="oi oi-layers" aria-hidden="true"></span>
+                                Batch size
+                            </div>
+                            <small class="text-muted">@batchSize files</small>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="quickScanFirst" 
-                                   @bind="quickScanFirst">
-                            <label class="form-check-label" for="quickScanFirst">
-                                Quick scan first (count files only)
-                            </label>
-                        </div>
-                    </div>
+                    <div class="form-text mt-2">To change scan options, go to <a href="/settings">Settings</a></div>
                 </div>
             </div>
         </div>
@@ -249,20 +243,13 @@
                         </button>
                     </div>
                     <div>
-                        @if (quickScanFirst && !hasRunQuickScan && !isScanning)
-                        {
-                            <button class="btn btn-info me-2" @onclick="RunQuickScan" disabled="@(string.IsNullOrEmpty(scanDirectory))">
-                                <span class="oi oi-dashboard" aria-hidden="true"></span> Quick Scan
-                            </button>
-                        }
-                        <button class="btn btn-primary" @onclick="StartFullScan" 
+                        <button class="btn btn-primary" @onclick="StartScan" 
                                 disabled="@(isScanning || string.IsNullOrEmpty(scanDirectory))">
                             @if (isScanning)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                             }
-                            <span class="oi oi-magnifying-glass" aria-hidden="true"></span> 
-                            @(hasRunQuickScan ? "Start Full Scan" : "Start Scan")
+                            <span class="oi oi-magnifying-glass" aria-hidden="true"></span> Start Scan
                         </button>
                     </div>
                 </div>
@@ -277,14 +264,6 @@
                 <h5 class="mb-0"><span class="oi oi-graph" aria-hidden="true"></span> Scan Information</h5>
             </div>
             <div class="card-body">
-                @if (quickScanResult != null)
-                {
-                    <div class="alert alert-info" role="alert">
-                        <h6 class="alert-heading">Quick Scan Results</h6>
-                        <p class="mb-0">Found <strong>@quickScanResult.TotalFilesFound</strong> image files in the selected directory.</p>
-                    </div>
-                }
-
                 <div class="mb-3">
                     <h6>Supported File Types:</h6>
                     <div class="d-flex flex-wrap">
@@ -298,10 +277,14 @@
                 <div class="mb-3">
                     <h6>Current Settings:</h6>
                     <ul class="list-unstyled small">
-                        <li><strong>Include Subdirectories:</strong> @(includeSubdirectories ? "Yes" : "No")</li>
-                        <li><strong>Batch Size:</strong> @batchSize files</li>
-                        <li><strong>Auto-scan on Startup:</strong> @(autoScanOnStartup ? "Yes" : "No")</li>
+                        <li><span class="oi oi-folder" aria-hidden="true"></span> <strong>Directory:</strong> @(string.IsNullOrEmpty(scanDirectory) ? "Not set" : scanDirectory)</li>
+                        <li><span class="oi oi-@(includeSubdirectories ? "check" : "x")" aria-hidden="true"></span> <strong>Include Subdirectories:</strong> @(includeSubdirectories ? "Yes" : "No")</li>
+                        <li><span class="oi oi-layers" aria-hidden="true"></span> <strong>Batch Size:</strong> @batchSize files</li>
+                        <li><span class="oi oi-timer" aria-hidden="true"></span> <strong>Auto-scan on Startup:</strong> @(autoScanOnStartup ? "Yes" : "No")</li>
                     </ul>
+                    <a href="/settings" class="btn btn-sm btn-outline-primary w-100">
+                        <span class="oi oi-cog" aria-hidden="true"></span> Change Settings
+                    </a>
                 </div>
 
                 @if (lastScanInfo != null)
@@ -325,7 +308,6 @@
             <div class="card-body">
                 <h6>Tips for Scanning:</h6>
                 <ul class="small">
-                    <li>Use Quick Scan first to estimate scan time</li>
                     <li>Large directories may take significant time to process</li>
                     <li>The scanner will skip files already in the database</li>
                     <li>Face recognition runs separately after scanning</li>

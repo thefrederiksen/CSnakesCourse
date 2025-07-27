@@ -8,17 +8,14 @@ public partial class PhotoScan : ComponentBase, IDisposable
 
     private string scanDirectory = "";
     private bool includeSubdirectories = true;
-    private bool quickScanFirst = true;
     private bool autoScanOnStartup = false;
     private int batchSize = 100;
     private string[] supportedExtensions = Array.Empty<string>();
     private DateTime? lastScanInfo;
 
     private bool isScanning = false;
-    private bool hasRunQuickScan = false;
     private ScanProgress? scanProgress;
     private ScanResult? scanResult;
-    private QuickScanResult? quickScanResult;
     private CancellationTokenSource? cancellationTokenSource;
     private DateTime scanStartTime;
 
@@ -45,48 +42,9 @@ public partial class PhotoScan : ComponentBase, IDisposable
         }
     }
 
-    private Task BrowseForDirectory()
-    {
-        // Placeholder for folder browser dialog
-        // In a real implementation, this would open a native folder browser
-        return Task.CompletedTask;
-    }
 
-    private async Task RunQuickScan()
-    {
-        try
-        {
-            isScanning = true;
-            quickScanResult = null;
-            StateHasChanged();
 
-            Logger.Info($"Starting quick scan of directory: {scanDirectory}");
-            
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2)); // 2-minute timeout for quick scan
-            quickScanResult = await PhotoScannerService.QuickScanAsync(scanDirectory, cts.Token);
-            hasRunQuickScan = true;
-
-            Logger.Info($"Quick scan completed: {quickScanResult.TotalFilesFound} files found");
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Quick scan failed: {ex.Message}");
-            quickScanResult = new QuickScanResult
-            {
-                DirectoryPath = scanDirectory,
-                Error = ex.Message,
-                StartTime = DateTime.UtcNow,
-                EndTime = DateTime.UtcNow
-            };
-        }
-        finally
-        {
-            isScanning = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task StartFullScan()
+    private async Task StartScan()
     {
         try
         {

@@ -9,7 +9,6 @@ namespace FaceVault.Services;
 public interface IFastPhotoScannerService
 {
     Task<ScanResult> ScanDirectoryAsync(string directory, IProgress<ScanProgress>? progress = null, CancellationToken cancellationToken = default);
-    Task<QuickScanResult> QuickScanAsync(string directory, CancellationToken cancellationToken = default);
     string[] GetSupportedExtensions();
 }
 
@@ -455,49 +454,6 @@ public class FastPhotoScannerService : IFastPhotoScannerService
         return (uint)((bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3]);
     }
 
-    public async Task<QuickScanResult> QuickScanAsync(string directory, CancellationToken cancellationToken = default)
-    {
-        var result = new QuickScanResult
-        {
-            DirectoryPath = directory,
-            StartTime = DateTime.UtcNow
-        };
-
-        try
-        {
-            if (!Directory.Exists(directory))
-            {
-                result.Error = $"Directory does not exist: {directory}";
-                return result;
-            }
-
-            var settings = await _settingsService.GetSettingsAsync();
-            var searchOption = settings.ScanSubdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-
-            // Quick count of image files
-            var totalFiles = 0;
-            await Task.Run(() =>
-            {
-                foreach (var ext in _supportedExtensions)
-                {
-                    var pattern = $"*{ext}";
-                    var files = Directory.GetFiles(directory, pattern, searchOption);
-                    totalFiles += files.Length;
-                }
-            }, cancellationToken);
-
-            result.TotalFilesFound = totalFiles;
-            result.EndTime = DateTime.UtcNow;
-            result.IsSuccess = true;
-        }
-        catch (Exception ex)
-        {
-            result.Error = ex.Message;
-            result.EndTime = DateTime.UtcNow;
-        }
-
-        return result;
-    }
 
     public string[] GetSupportedExtensions()
     {
@@ -512,16 +468,4 @@ public class BasicImageMetadata
     public DateTime? DateTaken { get; set; }
     public string? CameraMake { get; set; }
     public string? CameraModel { get; set; }
-}
-
-public class QuickScanResult
-{
-    public string DirectoryPath { get; set; } = "";
-    public DateTime StartTime { get; set; }
-    public DateTime? EndTime { get; set; }
-    public int TotalFilesFound { get; set; }
-    public bool IsSuccess { get; set; }
-    public string? Error { get; set; }
-    
-    public TimeSpan Duration => EndTime?.Subtract(StartTime) ?? TimeSpan.Zero;
 }

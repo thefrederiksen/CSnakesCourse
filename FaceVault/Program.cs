@@ -10,16 +10,26 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
+
+// Set appropriate log levels to reduce console spam during scanning
 if (builder.Environment.IsDevelopment())
 {
-    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+    // Reduce verbosity for specific categories
+    builder.Logging.AddFilter("Microsoft.AspNetCore", Microsoft.Extensions.Logging.LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", Microsoft.Extensions.Logging.LogLevel.Warning);
+    builder.Logging.AddFilter("System", Microsoft.Extensions.Logging.LogLevel.Warning);
+}
+else
+{
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
 }
 
 // Initialize PathService for proper user data management
 var pathService = new PathService();
 
 // Initialize custom logging early using proper user data directory
-Logger.Initialize(pathService.GetLogsDirectory(), FaceVault.Services.LogLevel.Debug);
+Logger.Initialize(pathService.GetLogsDirectory(), FaceVault.Services.LogLevel.Info);
 Logger.Info("FaceVault Blazor application starting");
 
 // Ensure all application directories exist
