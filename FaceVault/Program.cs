@@ -72,6 +72,8 @@ builder.Services.AddScoped<IFastPhotoScannerService, FastPhotoScannerService>();
 builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
 builder.Services.AddScoped<IDatabaseStatsService, DatabaseStatsService>();
 builder.Services.AddScoped<IDatabaseSyncService, DatabaseSyncService>();
+builder.Services.AddScoped<IMemoryService, MemoryService>();
+builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.

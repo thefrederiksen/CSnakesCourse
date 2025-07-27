@@ -1,0 +1,63 @@
+@using FaceVault.Services
+@inject IImageService ImageService
+
+@if (!string.IsNullOrEmpty(imageDataUrl))
+{
+    <img src="@imageDataUrl" 
+         class="card-img-top photo-thumbnail" 
+         alt="@Photo.FileName"
+         title="@GetPhotoTooltip()"
+         loading="lazy" />
+}
+else if (isLoading)
+{
+    <div class="card-img-top photo-placeholder d-flex align-items-center justify-content-center">
+        <div class="spinner-border spinner-border-sm text-muted" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card-img-top photo-placeholder d-flex align-items-center justify-content-center">
+        <span class="oi oi-image text-muted" aria-hidden="true"></span>
+    </div>
+}
+
+@code {
+    [Parameter] public Models.Image Photo { get; set; } = default!;
+    
+    private string imageDataUrl = string.Empty;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            imageDataUrl = await ImageService.GetImageDataUrlAsync(Photo.FilePath, 250);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error loading thumbnail for {Photo.FilePath}: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetPhotoTooltip()
+    {
+        var tooltip = $"{Photo.FileName}";
+        if (Photo.DateTaken.HasValue)
+        {
+            tooltip += $"\nTaken: {Photo.DateTaken.Value:yyyy-MM-dd HH:mm}";
+        }
+        if (Photo.Width > 0 && Photo.Height > 0)
+        {
+            tooltip += $"\nSize: {Photo.Width}×{Photo.Height}";
+        }
+        return tooltip;
+    }
+}

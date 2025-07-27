@@ -1,0 +1,80 @@
+using Microsoft.EntityFrameworkCore;
+using FaceVault.Data;
+using FaceVault.Models;
+
+namespace FaceVault.Services;
+
+public class MemoryService : IMemoryService
+{
+    private readonly FaceVaultDbContext _context;
+
+    public MemoryService(FaceVaultDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<MemoryCollection> GetTodaysMemoriesAsync(DateTime date)
+    {
+        var yearGroups = await GetPhotosByDateAsync(date);
+        var totalPhotos = yearGroups.Sum(g => g.PhotoCount);
+
+        return new MemoryCollection
+        {
+            Date = date,
+            YearGroups = yearGroups,
+            TotalPhotos = totalPhotos
+        };
+    }
+
+    public async Task<List<YearGroup>> GetPhotosByDateAsync(DateTime date)
+    {
+        try
+        {
+            // Get photos from this date across all years
+            var photos = await _context.Images
+                .AsNoTracking()
+                .Where(img => img.DateTaken.HasValue && 
+                             img.DateTaken.Value.Month == date.Month && 
+                             img.DateTaken.Value.Day == date.Day)
+                .OrderByDescending(img => img.DateTaken)
+                .Take(200) // Limit to prevent performance issues
+                .ToListAsync();
+
+            // Group by year and create year groups
+            var yearGroups = photos
+                .GroupBy(img => img.DateTaken!.Value.Year)
+                .OrderByDescending(g => g.Key)
+                .Select(g => new YearGroup
+                {
+                    Year = g.Key,
+                    Photos = g.OrderByDescending(img => img.DateTaken).ToList()
+                })
+                .ToList();
+
+            Logger.Info($"Found {photos.Count} photos for {date:MMMM d} across {yearGroups.Count} years");
+            return yearGroups;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error fetching photos for date {date:MMMM d}: {ex.Message}");
+            return new List<YearGroup>();
+        }
+    }
+
+    public async Task<int> GetTotalPhotosForDateAsync(DateTime date)
+    {
+        try
+        {
+            return await _context.Images
+                .AsNoTracking()
+                .CountAsync(img => img.DateTaken.HasValue && 
+                           img.DateTaken.Value.Month == date.Month && 
+                           img.DateTaken.Value.Day == date.Day);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error counting photos for date {date:MMMM d}: {ex.Message}");
+            return 0;
+        }
+    }
+}
