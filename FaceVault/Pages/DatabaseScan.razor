@@ -3,8 +3,10 @@
 @using FaceVault.Data
 @using Microsoft.EntityFrameworkCore
 @inject IPhotoScannerService PhotoScannerService
+@inject IFastPhotoScannerService FastPhotoScannerService
 @inject ISettingsService SettingsService
-@inject FaceVaultDbContext DbContext
+@inject IDatabaseStatsService DatabaseStatsService
+@inject IDatabaseSyncService DatabaseSyncService
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -64,10 +66,11 @@
                         </div>
                         <div class="col-md-4">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="extractFullMetadata" 
-                                       @bind="extractFullMetadata">
-                                <label class="form-check-label" for="extractFullMetadata">
-                                    Extract full EXIF data
+                                <input class="form-check-input" type="checkbox" id="useFastScanner" 
+                                       @bind="useFastScanner">
+                                <label class="form-check-label" for="useFastScanner">
+                                    <strong>Fast scan mode</strong>
+                                    <br><small class="text-muted">10x faster, basic metadata only</small>
                                 </label>
                             </div>
                         </div>
@@ -295,7 +298,7 @@
                         <li><strong>Batch Size:</strong> @batchSize files</li>
                         <li><strong>Include Subdirs:</strong> @(includeSubdirectories ? "Yes" : "No")</li>
                         <li><strong>Update Existing:</strong> @(overwriteExisting ? "Yes" : "No")</li>
-                        <li><strong>Extract EXIF:</strong> @(extractFullMetadata ? "Yes" : "No")</li>
+                        <li><strong>Scanner Mode:</strong> @(useFastScanner ? "Fast" : "Thorough")</li>
                     </ul>
                 </div>
             </div>
@@ -318,8 +321,9 @@
                     
                     <h6 class="mt-3">Performance Tips:</h6>
                     <ul class="small">
-                        <li>Larger batch sizes = faster processing</li>
-                        <li>EXIF extraction takes more time</li>
+                        <li><strong>Fast mode:</strong> 10x faster, parallel processing</li>
+                        <li><strong>Thorough mode:</strong> Full EXIF, better quality</li>
+                        <li>Larger batch sizes = faster database saves</li>
                         <li>Network drives will be slower</li>
                         <li>You can cancel anytime safely</li>
                     </ul>
@@ -333,7 +337,7 @@
     private string scanDirectory = "";
     private bool includeSubdirectories = true;
     private bool overwriteExisting = false;
-    private bool extractFullMetadata = true;
+    private bool useFastScanner = true;
     private int batchSize = 100;
     private string[] supportedExtensions = Array.Empty<string>();
 
@@ -366,7 +370,9 @@
             batchSize = settings.BatchSize;
             
             // Load supported extensions
-            supportedExtensions = PhotoScannerService.GetSupportedExtensions();
+            supportedExtensions = useFastScanner ? 
+                FastPhotoScannerService.GetSupportedExtensions() : 
+                PhotoScannerService.GetSupportedExtensions();
             
             // Load database statistics
             await RefreshStats();
@@ -381,10 +387,11 @@
     {
         try
         {
-            totalDatabaseImages = await DbContext.Images.CountAsync();
-            processedImages = await DbContext.Images.CountAsync(i => i.IsProcessed);
-            imagesWithFaces = await DbContext.Images.CountAsync(i => i.HasFaces);
-            totalPeople = await DbContext.People.CountAsync();
+            var stats = await DatabaseStatsService.GetStatsAsync();
+            totalDatabaseImages = stats.TotalImages;
+            processedImages = stats.ProcessedImages;
+            imagesWithFaces = stats.ImagesWithFaces;
+            totalPeople = stats.TotalPeople;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -439,14 +446,33 @@
             settings.BatchSize = batchSize;
             await SettingsService.SaveSettingsAsync(settings);
 
-            scanResult = await PhotoScannerService.ScanDirectoryAsync(
-                scanDirectory, 
-                progress, 
-                cancellationTokenSource.Token);
+            if (useFastScanner)
+            {
+                scanResult = await FastPhotoScannerService.ScanDirectoryAsync(
+                    scanDirectory, 
+                    progress, 
+                    cancellationTokenSource.Token);
+            }
+            else
+            {
+                scanResult = await PhotoScannerService.ScanDirectoryAsync(
+                    scanDirectory, 
+                    progress, 
+                    cancellationTokenSource.Token);
+            }
 
             if (scanResult.IsSuccess)
             {
                 Logger.Info($"Database scan completed successfully: {scanResult.NewImagesCount} new images added");
+                
+                // Validate data consistency and sync stats
+                await DatabaseSyncService.ValidateDataConsistencyAsync();
+                await DatabaseSyncService.SyncStatsAsync();
+                
+                // Generate detailed count report for debugging
+                var countReport = await DatabaseSyncService.GetDetailedCountReportAsync();
+                Logger.Info($"Post-scan count report: {countReport}");
+                
                 await RefreshStats(); // Update statistics after successful scan
             }
             else if (scanResult.IsCancelled)

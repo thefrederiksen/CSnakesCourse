@@ -1,6 +1,7 @@
 @page "/errorlog"
 @using FaceVault.Services
 @using System.IO
+@inject IPathService PathService
 @implements IDisposable
 
 <PageTitle>Error Log - FaceVault</PageTitle>
@@ -109,7 +110,7 @@ else
     {
         try
         {
-            var logsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+            var logsDirectory = PathService.GetLogsDirectory();
             if (Directory.Exists(logsDirectory))
             {
                 var logFiles = Directory.GetFiles(logsDirectory, "*.log")

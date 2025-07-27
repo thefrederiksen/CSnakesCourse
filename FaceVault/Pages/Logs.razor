@@ -1,6 +1,7 @@
 @page "/logs"
 @using FaceVault.Services
 @using System.IO
+@inject IPathService PathService
 @implements IDisposable
 
 <PageTitle>System Logs - FaceVault</PageTitle>
@@ -105,7 +106,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        logsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
+        logsDirectory = PathService.GetLogsDirectory();
         
         // Subscribe to live log events
         Logger.LogMessage += OnLogMessage;

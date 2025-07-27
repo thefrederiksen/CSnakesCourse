@@ -15,11 +15,13 @@ public class DatabaseHealthService : IDatabaseHealthService
 {
     private readonly FaceVaultDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IPathService _pathService;
 
-    public DatabaseHealthService(FaceVaultDbContext context, IConfiguration configuration)
+    public DatabaseHealthService(FaceVaultDbContext context, IConfiguration configuration, IPathService pathService)
     {
         _context = context;
         _configuration = configuration;
+        _pathService = pathService;
     }
 
     public async Task<DatabaseHealth> CheckHealthAsync()
@@ -147,8 +149,8 @@ public class DatabaseHealthService : IDatabaseHealthService
             Logger.Warning($"Could not determine database path: {ex.Message}");
         }
         
-        // Fallback to default path
-        return Task.FromResult(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "facevault.db"));
+        // Fallback to PathService
+        return Task.FromResult(_pathService.GetDatabasePath());
     }
 
     private async Task<bool> CheckTablesExistAsync()

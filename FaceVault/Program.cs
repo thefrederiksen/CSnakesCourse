@@ -15,25 +15,32 @@ if (builder.Environment.IsDevelopment())
     builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
 }
 
-// Initialize custom logging early  
-var logDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-Logger.Initialize(logDirectory, FaceVault.Services.LogLevel.Debug);
+// Initialize PathService for proper user data management
+var pathService = new PathService();
+
+// Initialize custom logging early using proper user data directory
+Logger.Initialize(pathService.GetLogsDirectory(), FaceVault.Services.LogLevel.Debug);
 Logger.Info("FaceVault Blazor application starting");
 
-// Ensure Data directory exists
-var dataDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data");
-if (!Directory.Exists(dataDirectory))
-{
-    Directory.CreateDirectory(dataDirectory);
-    Logger.Info($"Created Data directory: {dataDirectory}");
-}
+// Ensure all application directories exist
+pathService.EnsureDirectoriesExist();
 
-// Add Entity Framework with absolute path
-var dbPath = Path.Combine(dataDirectory, "facevault.db");
-var connectionString = $"Data Source={dbPath}";
+// Migrate database from old location if needed
+pathService.MigrateDatabaseIfNeeded();
+
+// Add Entity Framework with proper user data path and SQLite optimizations
+var dbPath = pathService.GetDatabasePath();
+var connectionString = $"Data Source={dbPath};Cache=Shared;";
+Logger.Info($"Database path: {pathService.GetDisplayPath(dbPath)}");
 
 builder.Services.AddDbContext<FaceVaultDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlite(connectionString, sqliteOptions =>
+    {
+        sqliteOptions.CommandTimeout(30); // 30 second timeout
+    })
+    .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
+    .EnableDetailedErrors(builder.Environment.IsDevelopment())
+    .LogTo(message => Logger.Debug($"EF Core: {message}"), Microsoft.Extensions.Logging.LogLevel.Information));
 
 // Add repositories
 builder.Services.AddScoped<IRepository<Image>, Repository<Image>>();
@@ -44,10 +51,17 @@ builder.Services.AddScoped<IRepository<Face>, Repository<Face>>();
 builder.Services.AddScoped<IRepository<Tag>, Repository<Tag>>();
 builder.Services.AddScoped<IRepository<ImageTag>, Repository<ImageTag>>();
 
+// Add path service as singleton (same paths throughout app lifetime)
+builder.Services.AddSingleton<IPathService>(pathService);
+
 // Add services
 builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IPhotoScannerService, PhotoScannerService>();
+builder.Services.AddScoped<IFastPhotoScannerService, FastPhotoScannerService>();
 builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
+builder.Services.AddScoped<IDatabaseStatsService, DatabaseStatsService>();
+builder.Services.AddScoped<IDatabaseSyncService, DatabaseSyncService>();
+builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.
 builder.Services.AddRazorPages();
@@ -97,6 +111,12 @@ try
                 Logger.Info("Database already exists");
             }
             
+            // Configure SQLite optimizations
+            await dbContext.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+            await dbContext.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;");
+            await dbContext.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;");
+            Logger.Info("SQLite optimizations applied");
+            
             // Test connection
             var canConnect = await dbContext.Database.CanConnectAsync();
             if (canConnect)
@@ -116,6 +136,12 @@ try
         {
             Logger.LogException(dbEx, $"Database initialization failed. DB Path: {dbPath}");
             
+            // Log detailed exception information
+            Logger.Error($"Exception Type: {dbEx.GetType().Name}");
+            Logger.Error($"Exception Message: {dbEx.Message}");
+            Logger.Error($"Inner Exception: {dbEx.InnerException?.Message ?? "None"}");
+            Logger.Error($"Stack Trace: {dbEx.StackTrace}");
+            
             // Try to provide more specific error information
             if (dbEx.Message.Contains("database is locked"))
             {
@@ -133,7 +159,21 @@ try
                 catch (Exception recreateEx)
                 {
                     Logger.LogException(recreateEx, "Failed to recreate database");
+                    Logger.Error($"Recreate Exception Type: {recreateEx.GetType().Name}");
+                    Logger.Error($"Recreate Exception Message: {recreateEx.Message}");
                 }
+            }
+            else if (dbEx.Message.Contains("readonly database"))
+            {
+                Logger.Error("Database file is readonly. Check file permissions.");
+            }
+            else if (dbEx.Message.Contains("disk I/O error"))
+            {
+                Logger.Error("Disk I/O error. Check disk space and file system health.");
+            }
+            else if (dbEx.Message.Contains("database disk image is malformed"))
+            {
+                Logger.Error("Database file is corrupted. Consider recreating the database.");
             }
         }
     }
