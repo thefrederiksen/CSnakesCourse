@@ -227,6 +227,38 @@ This technology is revolutionizing how we think about cross-language development
 
 ---
 
+## 🚀 Production Deployment Guidelines
+
+### Python Installation for CSnakes-Based Projects
+
+When deploying or building a project that uses CSnakes (such as FaceVault), it's important to ensure a consistent development and build environment. CSnakes relies on a locally installed Python runtime to analyze and generate bindings between Python and C# at build time.
+
+#### 🧱 Recommended Deployment Practice
+
+To avoid discrepancies across developer machines or build servers, we recommend the following:
+
+**🔁 Install the Same Python Version Everywhere**
+- Choose a stable Python version, such as 3.10.x
+- Install this version on:
+  - All developer workstations
+  - All build server environments
+
+This avoids unexpected behavior due to differences in the way Python interprets annotations, dependencies, or library versions.
+
+**📦 Tools You Can Use**
+- pyenv (Linux/macOS)
+- pyenv-win (Windows)
+- Direct installer from python.org
+
+**📁 Project Structure Notes**
+- Make sure your .py files with CSnakes bindings are part of the project and available at build time
+- Keep dependencies version-controlled (e.g., requirements.txt or a lockfile)
+
+**✅ Summary**
+While CSnakes lets you embed Python for runtime, you still need Python installed to build unless you pre-generate bindings. Installing a consistent Python version across all environments keeps builds stable and avoids platform-specific issues.
+
+---
+
 ## 📄 License
 
 This course is released under the [MIT License](./LICENSE).

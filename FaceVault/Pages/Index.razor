@@ -1,9 +1,296 @@
 ﻿@page "/"
+@using FaceVault.Services
+@inject ISettingsService SettingsService
+@inject NavigationManager Navigation
 
-<PageTitle>Index</PageTitle>
+<PageTitle>FaceVault - Smart Photo Organization</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h1 class="display-4 mb-3">
+                <span class="oi oi-camera-slr me-3" aria-hidden="true"></span>
+                FaceVault
+            </h1>
+            <p class="lead">Smart Photo Face Recognition & Organization</p>
+            <p class="text-muted">Your Personal Photo Memory Vault – Never lose a face again</p>
+        </div>
+    </div>
 
-Welcome to your new app.
+    @if (isFirstRun)
+    {
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card border-primary">
+                    <div class="card-header bg-primary text-white text-center">
+                        <h4 class="mb-0">
+                            <span class="oi oi-wrench me-2" aria-hidden="true"></span>
+                            Welcome to FaceVault!
+                        </h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <p class="card-text mb-4">
+                            Let's get started by configuring your preferences. 
+                            All features are enabled by default, and your photos directory is set to: 
+                            <strong>@photoDirectory</strong>
+                        </p>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">✅ Features Included</h6>
+                                        <ul class="list-unstyled text-start">
+                                            <li>• Face Recognition</li>
+                                            <li>• "On This Day" Memories</li>
+                                            <li>• Screenshot Filtering</li>
+                                            <li>• Duplicate Detection</li>
+                                            <li>• Collage Generation</li>
+                                            <li>• AI Query Support</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title">🔒 Privacy First</h6>
+                                        <ul class="list-unstyled text-start">
+                                            <li>• 100% Local Processing</li>
+                                            <li>• No Cloud Required</li>
+                                            <li>• Encrypted Face Data</li>
+                                            <li>• No Telemetry by Default</li>
+                                            <li>• Full User Control</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <button class="btn btn-primary btn-lg me-md-2" @onclick="OpenSettings">
+                                <span class="oi oi-cog me-2" aria-hidden="true"></span>
+                                Configure Settings
+                            </button>
+                            <button class="btn btn-outline-success btn-lg" @onclick="UseDefaults">
+                                <span class="oi oi-check me-2" aria-hidden="true"></span>
+                                Use Defaults & Continue
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Quick Stats -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">@imageCount</h3>
+                                <p class="card-text">Photos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success">@peopleCount</h3>
+                                <p class="card-text">People</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-info">@faceCount</h3>
+                                <p class="card-text">Faces</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning">@tagCount</h3>
+                                <p class="card-text">Tags</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Quick Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-primary w-100" @onclick="ScanPhotos">
+                                    <span class="oi oi-magnifying-glass me-2" aria-hidden="true"></span>
+                                    Scan for Photos
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-success w-100" @onclick="ViewMemories">
+                                    <span class="oi oi-calendar me-2" aria-hidden="true"></span>
+                                    Today's Memories
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-info w-100" @onclick="ManagePeople">
+                                    <span class="oi oi-people me-2" aria-hidden="true"></span>
+                                    Manage People
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-warning w-100" @onclick="FindDuplicates">
+                                    <span class="oi oi-copywriting me-2" aria-hidden="true"></span>
+                                    Find Duplicates
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Settings Panel -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Settings</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-outline-primary w-100 mb-3" @onclick="OpenSettings">
+                            <span class="oi oi-cog me-2" aria-hidden="true"></span>
+                            Configure Settings
+                        </button>
+                        
+                        <h6>Current Photo Directory:</h6>
+                        <p class="text-muted small">@photoDirectory</p>
+                        
+                        <h6>Active Features:</h6>
+                        @foreach (var feature in enabledFeatures)
+                        {
+                            <span class="badge bg-success me-1 mb-1">@feature</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Status Panel -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">System Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <span>Database:</span>
+                            <span class="badge bg-success">Connected</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>Last Scan:</span>
+                            <span class="text-muted">@lastScanText</span>
+                        </div>
+                        <button class="btn btn-outline-info w-100 mt-2" @onclick="ViewDatabaseStatus">
+                            <span class="oi oi-hard-drive me-2" aria-hidden="true"></span>
+                            Database Status
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isFirstRun = true;
+    private string photoDirectory = "";
+    private int imageCount = 0;
+    private int peopleCount = 0;
+    private int faceCount = 0;
+    private int tagCount = 0;
+    private List<string> enabledFeatures = new();
+    private string lastScanText = "Never";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            isFirstRun = await SettingsService.IsFirstRunAsync();
+            photoDirectory = await SettingsService.GetPhotoDirectoryAsync();
+            
+            if (!isFirstRun)
+            {
+                // Load stats (placeholder for now)
+                var featureStatus = await SettingsService.GetFeatureStatusAsync();
+                enabledFeatures = featureStatus
+                    .Where(f => Convert.ToBoolean(f.Value))
+                    .Select(f => f.Key)
+                    .ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle error silently for now
+            System.Diagnostics.Debug.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+    }
+
+    private void OpenSettings()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    private async Task UseDefaults()
+    {
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.MarkScanCompleted(); // Mark as no longer first run
+            await SettingsService.SaveSettingsAsync(settings);
+            await LoadDashboardData();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error using defaults: {ex.Message}");
+        }
+    }
+
+    private void ScanPhotos()
+    {
+        Navigation.NavigateTo("/photo-scan");
+    }
+
+    private void ViewMemories()
+    {
+        // TODO: Navigate to memories page when implemented
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void ManagePeople()
+    {
+        // TODO: Navigate to people page when implemented
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void FindDuplicates()
+    {
+        // TODO: Navigate to duplicates page when implemented
+        Navigation.NavigateTo("/settings");
+    }
+
+    private void ViewDatabaseStatus()
+    {
+        Navigation.NavigateTo("/database-status");
+    }
+}

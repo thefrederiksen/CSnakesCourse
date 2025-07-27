@@ -1,0 +1,422 @@
+@page "/database-status"
+@using FaceVault.Data
+@using FaceVault.Repositories
+@using Microsoft.EntityFrameworkCore
+@inject FaceVaultDbContext DbContext
+@implements IDisposable
+
+<PageTitle>Database Status - FaceVault</PageTitle>
+
+<h1>Database Status</h1>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <button class="btn btn-primary" @onclick="RefreshStatus">
+            <span class="oi oi-reload" aria-hidden="true"></span> Refresh
+        </button>
+        <button class="btn btn-success ms-2" @onclick="InitializeDatabase">
+            <span class="oi oi-plus" aria-hidden="true"></span> Initialize Database
+        </button>
+    </div>
+    <div class="col-md-6 text-end">
+        <small class="text-muted">Last updated: @lastUpdated.ToString("HH:mm:ss")</small>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading database status...</p>
+    </div>
+}
+else
+{
+    <!-- Database Connection Status -->
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Connection Status</h5>
+            <span class="badge bg-@(canConnect ? "success" : "danger")">
+                @(canConnect ? "Connected" : "Disconnected")
+            </span>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>Database File:</strong> @databasePath
+                </div>
+                <div class="col-md-3">
+                    <strong>File Exists:</strong> 
+                    <span class="badge bg-@(databaseExists ? "success" : "warning")">
+                        @(databaseExists ? "Yes" : "No")
+                    </span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Size:</strong> @databaseSizeFormatted
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(connectionError))
+            {
+                <div class="alert alert-danger mt-2">
+                    <strong>Connection Error:</strong> @connectionError
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Table Statistics -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">Table Statistics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                @foreach (var table in tableCounts)
+                {
+                    <div class="col-md-2 mb-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary">@table.Value</h3>
+                                <p class="card-text">@table.Key</p>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Database Schema Status -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">Schema Status</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Database Created:</strong>
+                    <span class="badge bg-@(databaseExists ? "success" : "warning")">
+                        @(databaseExists ? "Yes" : "No")
+                    </span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Migrations Applied:</strong>
+                    <span class="badge bg-@(migrationsApplied ? "success" : "warning")">
+                        @(migrationsApplied ? "Yes" : "No")
+                    </span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Pending Migrations:</strong>
+                    <span class="badge bg-@(pendingMigrations.Any() ? "warning" : "success")">
+                        @pendingMigrations.Count()
+                    </span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Schema Version:</strong>
+                    <span class="badge bg-info">@schemaVersion</span>
+                </div>
+            </div>
+
+            @if (pendingMigrations.Any())
+            {
+                <div class="alert alert-warning mt-3">
+                    <h6>Pending Migrations:</h6>
+                    <ul class="mb-0">
+                        @foreach (var migration in pendingMigrations)
+                        {
+                            <li>@migration</li>
+                        }
+                    </ul>
+                    <button class="btn btn-warning btn-sm mt-2" @onclick="ApplyMigrations">
+                        Apply Migrations
+                    </button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Performance Metrics -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">Performance Metrics</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Last Query Time:</strong> @lastQueryTime ms
+                </div>
+                <div class="col-md-4">
+                    <strong>Connection Pool:</strong> Active
+                </div>
+                <div class="col-md-4">
+                    <strong>Status Check Time:</strong> @statusCheckTime ms
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Quick Actions</h5>
+        </div>
+        <div class="card-body">
+            <div class="btn-group" role="group">
+                <button class="btn btn-outline-primary" @onclick="TestConnection">
+                    <span class="oi oi-pulse" aria-hidden="true"></span> Test Connection
+                </button>
+                <button class="btn btn-outline-info" @onclick="ViewSchema">
+                    <span class="oi oi-list" aria-hidden="true"></span> View Schema
+                </button>
+                <button class="btn btn-outline-success" @onclick="SeedTestData" disabled="@(!canConnect)">
+                    <span class="oi oi-data-transfer-download" aria-hidden="true"></span> Seed Test Data
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div class="alert alert-@statusMessageType alert-dismissible fade show mt-3" role="alert">
+        @statusMessage
+        <button type="button" class="btn-close" @onclick="ClearStatusMessage"></button>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private bool canConnect = false;
+    private bool databaseExists = false;
+    private bool migrationsApplied = false;
+    private string databasePath = "";
+    private string databaseSizeFormatted = "0 B";
+    private Dictionary<string, int> tableCounts = new();
+    private IEnumerable<string> pendingMigrations = new List<string>();
+    private string schemaVersion = "Unknown";
+    private string connectionError = "";
+    private DateTime lastUpdated = DateTime.Now;
+    private double lastQueryTime = 0;
+    private double statusCheckTime = 0;
+    private string statusMessage = "";
+    private string statusMessageType = "info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshStatus();
+    }
+
+    private async Task RefreshStatus()
+    {
+        isLoading = true;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            connectionError = "";
+            
+            // Test database connection
+            canConnect = await TestDatabaseConnection();
+            
+            if (canConnect)
+            {
+                // Get database info
+                await GetDatabaseInfo();
+                
+                // Get table counts
+                await GetTableCounts();
+                
+                // Check migrations
+                await CheckMigrations();
+            }
+        }
+        catch (Exception ex)
+        {
+            connectionError = ex.Message;
+            canConnect = false;
+        }
+        finally
+        {
+            stopwatch.Stop();
+            statusCheckTime = stopwatch.ElapsedMilliseconds;
+            lastUpdated = DateTime.Now;
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<bool> TestDatabaseConnection()
+    {
+        try
+        {
+            var queryStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await DbContext.Database.CanConnectAsync();
+            queryStopwatch.Stop();
+            lastQueryTime = queryStopwatch.ElapsedMilliseconds;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            connectionError = ex.Message;
+            return false;
+        }
+    }
+
+    private Task GetDatabaseInfo()
+    {
+        try
+        {
+            var connectionString = DbContext.Database.GetConnectionString();
+            if (connectionString?.Contains("Data Source=") == true)
+            {
+                databasePath = connectionString.Split("Data Source=")[1].Split(';')[0];
+                databaseExists = File.Exists(databasePath);
+                
+                if (databaseExists)
+                {
+                    var fileInfo = new FileInfo(databasePath);
+                    var sizeBytes = fileInfo.Length;
+                    databaseSizeFormatted = FormatFileSize(sizeBytes);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            connectionError = $"Database info error: {ex.Message}";
+        }
+        
+        return Task.CompletedTask;
+    }
+
+    private async Task GetTableCounts()
+    {
+        try
+        {
+            tableCounts = await DbContext.GetAllTableCountsAsync();
+        }
+        catch (Exception ex)
+        {
+            tableCounts = new Dictionary<string, int>
+            {
+                ["Images"] = 0,
+                ["People"] = 0,
+                ["Faces"] = 0,
+                ["Tags"] = 0,
+                ["ImageTags"] = 0
+            };
+            connectionError = $"Table count error: {ex.Message}";
+        }
+    }
+
+    private async Task CheckMigrations()
+    {
+        try
+        {
+            pendingMigrations = await DbContext.Database.GetPendingMigrationsAsync();
+            var appliedMigrations = await DbContext.Database.GetAppliedMigrationsAsync();
+            migrationsApplied = appliedMigrations.Any();
+            schemaVersion = appliedMigrations.LastOrDefault() ?? "None";
+        }
+        catch (Exception ex)
+        {
+            connectionError = $"Migration check error: {ex.Message}";
+        }
+    }
+
+    private async Task InitializeDatabase()
+    {
+        try
+        {
+            var created = await DbContext.EnsureDatabaseCreatedAsync();
+            if (created)
+            {
+                ShowStatusMessage("Database initialized successfully!", "success");
+            }
+            else
+            {
+                ShowStatusMessage("Database already exists", "info");
+            }
+            await RefreshStatus();
+        }
+        catch (Exception ex)
+        {
+            ShowStatusMessage($"Error initializing database: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task ApplyMigrations()
+    {
+        try
+        {
+            await DbContext.Database.MigrateAsync();
+            ShowStatusMessage("Migrations applied successfully!", "success");
+            await RefreshStatus();
+        }
+        catch (Exception ex)
+        {
+            ShowStatusMessage($"Error applying migrations: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task TestConnection()
+    {
+        var canConnect = await TestDatabaseConnection();
+        var message = canConnect ? "Database connection successful!" : $"Connection failed: {connectionError}";
+        var type = canConnect ? "success" : "danger";
+        ShowStatusMessage(message, type);
+    }
+
+    private Task ViewSchema()
+    {
+        ShowStatusMessage("Schema viewer not implemented yet", "info");
+        return Task.CompletedTask;
+    }
+
+    private async Task SeedTestData()
+    {
+        try
+        {
+            // Add a few test tags if none exist
+            if (!await DbContext.Tags.AnyAsync())
+            {
+                ShowStatusMessage("No additional test data to seed - default tags already exist", "info");
+            }
+            else
+            {
+                ShowStatusMessage("Test data seeding not implemented yet", "info");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatusMessage($"Error seeding test data: {ex.Message}", "danger");
+        }
+    }
+
+    private void ShowStatusMessage(string message, string type)
+    {
+        statusMessage = message;
+        statusMessageType = type;
+        StateHasChanged();
+    }
+
+    private void ClearStatusMessage()
+    {
+        statusMessage = "";
+        StateHasChanged();
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}
