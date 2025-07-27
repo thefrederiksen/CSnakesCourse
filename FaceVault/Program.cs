@@ -41,7 +41,6 @@ builder.Services.AddScoped<IPhotoScannerService, PhotoScannerService>();
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddSingleton<WeatherForecastService>();
 builder.Services.AddSingleton<ImageHashService>();
 
 var app = builder.Build();

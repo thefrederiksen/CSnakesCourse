@@ -136,19 +136,25 @@
                                 </button>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <button class="btn btn-success w-100" @onclick="ViewMemories">
+                                <button class="btn btn-success w-100" @onclick="ScanDatabase">
+                                    <span class="oi oi-hard-drive me-2" aria-hidden="true"></span>
+                                    Database Scan
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <button class="btn btn-info w-100" @onclick="ViewMemories">
                                     <span class="oi oi-calendar me-2" aria-hidden="true"></span>
                                     Today's Memories
                                 </button>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <button class="btn btn-info w-100" @onclick="ManagePeople">
+                                <button class="btn btn-warning w-100" @onclick="ManagePeople">
                                     <span class="oi oi-people me-2" aria-hidden="true"></span>
                                     Manage People
                                 </button>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <button class="btn btn-warning w-100" @onclick="FindDuplicates">
+                                <button class="btn btn-danger w-100" @onclick="FindDuplicates">
                                     <span class="oi oi-copywriting me-2" aria-hidden="true"></span>
                                     Find Duplicates
                                 </button>
@@ -269,6 +275,11 @@
     private void ScanPhotos()
     {
         Navigation.NavigateTo("/photo-scan");
+    }
+
+    private void ScanDatabase()
+    {
+        Navigation.NavigateTo("/database-scan");
     }
 
     private void ViewMemories()

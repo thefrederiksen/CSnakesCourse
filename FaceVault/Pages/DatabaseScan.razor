@@ -1,0 +1,510 @@
+@page "/database-scan"
+@using FaceVault.Services
+@using FaceVault.Data
+@using Microsoft.EntityFrameworkCore
+@inject IPhotoScannerService PhotoScannerService
+@inject ISettingsService SettingsService
+@inject FaceVaultDbContext DbContext
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Database Scan - FaceVault</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-6">
+                <span class="oi oi-hard-drive me-3" aria-hidden="true"></span>
+                Database Scan
+            </h1>
+            <p class="lead">Scan your photo directory and populate the database with image metadata</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Scan Configuration -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-cog" aria-hidden="true"></span> Scan Configuration</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="scanDirectory" class="form-label">Directory to Scan</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="scanDirectory" 
+                                       @bind="scanDirectory" placeholder="Select directory to scan...">
+                                <button class="btn btn-outline-secondary" type="button" @onclick="UseCurrentPhotoDirectory">
+                                    <span class="oi oi-folder" aria-hidden="true"></span> Use Photo Directory
+                                </button>
+                            </div>
+                            <div class="form-text">Directory: <strong>@scanDirectory</strong></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="includeSubdirectories" 
+                                       @bind="includeSubdirectories">
+                                <label class="form-check-label" for="includeSubdirectories">
+                                    Include subdirectories
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="overwriteExisting" 
+                                       @bind="overwriteExisting">
+                                <label class="form-check-label" for="overwriteExisting">
+                                    Update existing records
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="extractFullMetadata" 
+                                       @bind="extractFullMetadata">
+                                <label class="form-check-label" for="extractFullMetadata">
+                                    Extract full EXIF data
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan Progress -->
+            @if (isScanning || scanResult != null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <span class="oi oi-@(isScanning ? "media-play" : "check")" aria-hidden="true"></span> 
+                            Database Scan Progress
+                        </h5>
+                        @if (isScanning)
+                        {
+                            <button class="btn btn-outline-danger btn-sm" @onclick="CancelScan">
+                                <span class="oi oi-media-stop" aria-hidden="true"></span> Cancel
+                            </button>
+                        }
+                    </div>
+                    <div class="card-body">
+                        @if (isScanning && scanProgress != null)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@scanProgress.Message</span>
+                                    <span>@scanProgress.ProcessedCount / @scanProgress.TotalCount</span>
+                                </div>
+                                <div class="progress mb-2" style="height: 24px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                         style="width: @(scanProgress.PercentComplete)%" 
+                                         aria-valuenow="@(scanProgress.PercentComplete)" 
+                                         aria-valuemin="0" aria-valuemax="100">
+                                        @(scanProgress.PercentComplete.ToString("F1"))%
+                                    </div>
+                                </div>
+                                
+                                <div class="row text-center">
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Current File:</small><br>
+                                        <span class="small text-truncate d-block">@scanProgress.CurrentFile</span>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Phase:</small><br>
+                                        <span class="badge bg-info">@scanProgress.Phase</span>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Found:</small><br>
+                                        <strong class="text-primary">@scanProgress.TotalCount</strong>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Processed:</small><br>
+                                        <strong class="text-success">@scanProgress.ProcessedCount</strong>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Progress:</small><br>
+                                        <strong>@(scanProgress.PercentComplete.ToString("F1"))%</strong>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <small class="text-muted">Speed:</small><br>
+                                        <strong>@currentSpeed files/sec</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
+                        @if (scanResult != null && !isScanning)
+                        {
+                            <div class="alert alert-@(scanResult.IsSuccess ? "success" : scanResult.IsCancelled ? "warning" : "danger")" role="alert">
+                                <h6 class="alert-heading">
+                                    @if (scanResult.IsSuccess)
+                                    {
+                                        <span class="oi oi-check" aria-hidden="true"></span><text> Database Scan Completed Successfully</text>
+                                    }
+                                    else if (scanResult.IsCancelled)
+                                    {
+                                        <span class="oi oi-warning" aria-hidden="true"></span><text> Database Scan Cancelled</text>
+                                    }
+                                    else
+                                    {
+                                        <span class="oi oi-x" aria-hidden="true"></span><text> Database Scan Failed</text>
+                                    }
+                                </h6>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <strong class="text-primary">@scanResult.TotalFilesFound</strong><br>
+                                        <small>Files Found</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="text-success">@scanResult.NewImagesCount</strong><br>
+                                        <small>New Images</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="text-info">@(scanResult.TotalFilesFound - scanResult.NewImagesCount - scanResult.SkippedCount)</strong><br>
+                                        <small>Updated</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="text-warning">@scanResult.SkippedCount</strong><br>
+                                        <small>Skipped</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="text-danger">@scanResult.ErrorCount</strong><br>
+                                        <small>Errors</small>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <strong class="text-secondary">@(scanResult.Duration.ToString(@"mm\:ss"))</strong><br>
+                                        <small>Duration</small>
+                                    </div>
+                                </div>
+                                @if (scanResult.Duration.TotalSeconds > 0)
+                                {
+                                    <hr>
+                                    <p class="mb-0">
+                                        Processing Speed: <strong>@(scanResult.FilesPerSecond.ToString("F1"))</strong> files/sec |
+                                        Database Records: <strong>@totalDatabaseImages</strong> images
+                                    </p>
+                                }
+                                @if (!string.IsNullOrEmpty(scanResult.Error))
+                                {
+                                    <hr>
+                                    <p class="mb-0 text-danger"><strong>Error:</strong> @scanResult.Error</p>
+                                }
+                            </div>
+
+                            @if (scanResult.Errors.Any())
+                            {
+                                <div class="alert alert-warning" role="alert">
+                                    <h6 class="alert-heading">Processing Errors (@scanResult.Errors.Count)</h6>
+                                    <details>
+                                        <summary class="btn btn-link p-0">Show Error Details</summary>
+                                        <div class="mt-2">
+                                            @foreach (var error in scanResult.Errors.Take(20))
+                                            {
+                                                <div class="small text-muted mb-1">@error</div>
+                                            }
+                                            @if (scanResult.Errors.Count > 20)
+                                            {
+                                                <div class="small text-muted">... and @(scanResult.Errors.Count - 20) more errors</div>
+                                            }
+                                        </div>
+                                    </details>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Action Buttons -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                                <span class="oi oi-arrow-left" aria-hidden="true"></span> Back to Home
+                            </button>
+                        </div>
+                        <div>
+                            <button class="btn btn-primary" @onclick="StartDatabaseScan" 
+                                    disabled="@(isScanning || string.IsNullOrEmpty(scanDirectory) || !Directory.Exists(scanDirectory))">
+                                @if (isScanning)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span class="oi oi-hard-drive" aria-hidden="true"></span> 
+                                Start Database Scan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Current Database Status -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-graph" aria-hidden="true"></span> Current Database</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h4 class="text-primary">@totalDatabaseImages</h4>
+                            <small>Images in DB</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h4 class="text-success">@processedImages</h4>
+                            <small>Processed</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-info">@imagesWithFaces</h4>
+                            <small>With Faces</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-warning">@totalPeople</h4>
+                            <small>People</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <button class="btn btn-outline-info w-100" @onclick="RefreshStats">
+                        <span class="oi oi-reload" aria-hidden="true"></span> Refresh Statistics
+                    </button>
+                </div>
+            </div>
+
+            <!-- Supported File Types -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-document" aria-hidden="true"></span> Supported File Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap">
+                        @foreach (var ext in supportedExtensions)
+                        {
+                            <span class="badge bg-secondary me-1 mb-1">@ext.ToUpper()</span>
+                        }
+                    </div>
+                    <hr>
+                    <h6>Scan Settings:</h6>
+                    <ul class="list-unstyled small">
+                        <li><strong>Batch Size:</strong> @batchSize files</li>
+                        <li><strong>Include Subdirs:</strong> @(includeSubdirectories ? "Yes" : "No")</li>
+                        <li><strong>Update Existing:</strong> @(overwriteExisting ? "Yes" : "No")</li>
+                        <li><strong>Extract EXIF:</strong> @(extractFullMetadata ? "Yes" : "No")</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Help Information -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-question-mark" aria-hidden="true"></span> Scan Information</h5>
+                </div>
+                <div class="card-body">
+                    <h6>What this scan does:</h6>
+                    <ul class="small">
+                        <li>Finds all image files in the directory</li>
+                        <li>Extracts file metadata (size, dates, etc.)</li>
+                        <li>Reads EXIF data (camera, location, settings)</li>
+                        <li>Calculates file hashes for duplicates</li>
+                        <li>Populates the FaceVault database</li>
+                        <li>Skips files already in the database (unless updating)</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Performance Tips:</h6>
+                    <ul class="small">
+                        <li>Larger batch sizes = faster processing</li>
+                        <li>EXIF extraction takes more time</li>
+                        <li>Network drives will be slower</li>
+                        <li>You can cancel anytime safely</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string scanDirectory = "";
+    private bool includeSubdirectories = true;
+    private bool overwriteExisting = false;
+    private bool extractFullMetadata = true;
+    private int batchSize = 100;
+    private string[] supportedExtensions = Array.Empty<string>();
+
+    private bool isScanning = false;
+    private ScanProgress? scanProgress;
+    private ScanResult? scanResult;
+    private CancellationTokenSource? cancellationTokenSource;
+    private string currentSpeed = "0";
+    private DateTime scanStartTime;
+    
+    // Database statistics
+    private int totalDatabaseImages = 0;
+    private int processedImages = 0;
+    private int imagesWithFaces = 0;
+    private int totalPeople = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadInitialData();
+    }
+
+    private async Task LoadInitialData()
+    {
+        try
+        {
+            // Load settings
+            var settings = await SettingsService.GetSettingsAsync();
+            scanDirectory = settings.PhotoDirectory;
+            includeSubdirectories = settings.ScanSubdirectories;
+            batchSize = settings.BatchSize;
+            
+            // Load supported extensions
+            supportedExtensions = PhotoScannerService.GetSupportedExtensions();
+            
+            // Load database statistics
+            await RefreshStats();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error loading initial data: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshStats()
+    {
+        try
+        {
+            totalDatabaseImages = await DbContext.Images.CountAsync();
+            processedImages = await DbContext.Images.CountAsync(i => i.IsProcessed);
+            imagesWithFaces = await DbContext.Images.CountAsync(i => i.HasFaces);
+            totalPeople = await DbContext.People.CountAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error refreshing statistics: {ex.Message}");
+        }
+    }
+
+    private async Task UseCurrentPhotoDirectory()
+    {
+        try
+        {
+            var settings = await SettingsService.GetSettingsAsync();
+            scanDirectory = settings.PhotoDirectory;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error loading photo directory: {ex.Message}");
+        }
+    }
+
+    private async Task StartDatabaseScan()
+    {
+        if (string.IsNullOrEmpty(scanDirectory) || !Directory.Exists(scanDirectory))
+        {
+            Logger.Warning("Invalid scan directory specified");
+            return;
+        }
+
+        try
+        {
+            isScanning = true;
+            scanResult = null;
+            scanProgress = null;
+            cancellationTokenSource = new CancellationTokenSource();
+            scanStartTime = DateTime.UtcNow;
+            StateHasChanged();
+
+            Logger.Info($"Starting database scan of directory: {scanDirectory}");
+
+            var progress = new Progress<ScanProgress>(progress =>
+            {
+                scanProgress = progress;
+                UpdateSpeed();
+                StateHasChanged();
+            });
+
+            // Update settings to match current scan preferences
+            var settings = await SettingsService.GetSettingsAsync();
+            settings.ScanSubdirectories = includeSubdirectories;
+            settings.BatchSize = batchSize;
+            await SettingsService.SaveSettingsAsync(settings);
+
+            scanResult = await PhotoScannerService.ScanDirectoryAsync(
+                scanDirectory, 
+                progress, 
+                cancellationTokenSource.Token);
+
+            if (scanResult.IsSuccess)
+            {
+                Logger.Info($"Database scan completed successfully: {scanResult.NewImagesCount} new images added");
+                await RefreshStats(); // Update statistics after successful scan
+            }
+            else if (scanResult.IsCancelled)
+            {
+                Logger.Info("Database scan was cancelled by user");
+            }
+            else
+            {
+                Logger.Error($"Database scan failed: {scanResult.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Database scan failed: {ex.Message}");
+            scanResult = new ScanResult
+            {
+                DirectoryPath = scanDirectory,
+                Error = ex.Message,
+                StartTime = scanStartTime,
+                EndTime = DateTime.UtcNow
+            };
+        }
+        finally
+        {
+            isScanning = false;
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = null;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateSpeed()
+    {
+        if (scanProgress != null && scanProgress.ProcessedCount > 0)
+        {
+            var elapsed = DateTime.UtcNow - scanStartTime;
+            if (elapsed.TotalSeconds > 0)
+            {
+                var speed = scanProgress.ProcessedCount / elapsed.TotalSeconds;
+                currentSpeed = speed.ToString("F1");
+            }
+        }
+    }
+
+    private void CancelScan()
+    {
+        cancellationTokenSource?.Cancel();
+        Logger.Info("Database scan cancellation requested");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        cancellationTokenSource?.Cancel();
+        cancellationTokenSource?.Dispose();
+    }
+}
