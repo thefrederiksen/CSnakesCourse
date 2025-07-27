@@ -94,6 +94,26 @@ public class PhotoScannerService : IPhotoScannerService
                 {
                     try
                     {
+                        var existingImage = await _context.Images
+                            .FirstOrDefaultAsync(img => img.FilePath == filePath, cancellationToken);
+
+                        if (existingImage != null)
+                        {
+                            result.SkippedCount++;
+                            processedCount++;
+                            
+                            progress?.Report(new ScanProgress 
+                            { 
+                                CurrentFile = Path.GetFileName(filePath), 
+                                ProcessedCount = processedCount, 
+                                TotalCount = allFiles.Count,
+                                Phase = ScanPhase.Processing,
+                                Message = $"Skipped {Path.GetFileName(filePath)} (already in database)"
+                            });
+                            
+                            continue;
+                        }
+
                         progress?.Report(new ScanProgress 
                         { 
                             CurrentFile = Path.GetFileName(filePath), 
@@ -102,16 +122,6 @@ public class PhotoScannerService : IPhotoScannerService
                             Phase = ScanPhase.Processing,
                             Message = $"Processing {Path.GetFileName(filePath)}"
                         });
-
-                        var existingImage = await _context.Images
-                            .FirstOrDefaultAsync(img => img.FilePath == filePath, cancellationToken);
-
-                        if (existingImage != null)
-                        {
-                            result.SkippedCount++;
-                            processedCount++;
-                            continue;
-                        }
 
                         var metadata = await ExtractMetadataAsync(filePath);
                         var fileHash = await CalculateFileHashAsync(filePath);
@@ -138,19 +148,44 @@ public class PhotoScannerService : IPhotoScannerService
                         result.NewImagesCount++;
                         processedCount++;
 
+                        // Report progress after incrementing count
+                        progress?.Report(new ScanProgress 
+                        { 
+                            CurrentFile = Path.GetFileName(filePath), 
+                            ProcessedCount = processedCount, 
+                            TotalCount = allFiles.Count,
+                            Phase = ScanPhase.Processing,
+                            Message = $"Added {Path.GetFileName(filePath)}"
+                        });
+
                         // Save in batches to avoid memory issues
                         if (result.NewImagesCount % batchSize == 0)
                         {
                             await _context.SaveChangesAsync(cancellationToken);
-                            Logger.Info($"Saved batch of {batchSize} images to database");
+                            // Only log batch saves every 10 batches to reduce console spam
+                            if (result.NewImagesCount % (batchSize * 10) == 0)
+                            {
+                                Logger.Info($"Progress: {result.NewImagesCount} images saved to database");
+                            }
                         }
                     }
                     catch (Exception ex)
                     {
                         result.ErrorCount++;
                         result.Errors.Add($"Error processing {filePath}: {ex.Message}");
+                        // Always log errors
                         Logger.Error($"Error processing image {filePath}: {ex.Message}");
                         processedCount++;
+                        
+                        // Report progress even for errors
+                        progress?.Report(new ScanProgress 
+                        { 
+                            CurrentFile = Path.GetFileName(filePath), 
+                            ProcessedCount = processedCount, 
+                            TotalCount = allFiles.Count,
+                            Phase = ScanPhase.Processing,
+                            Message = $"Error processing {Path.GetFileName(filePath)}"
+                        });
                     }
                 }
 
@@ -308,7 +343,8 @@ public class PhotoScannerService : IPhotoScannerService
         }
         catch (Exception ex)
         {
-            Logger.Warning($"Could not extract metadata from {filePath}: {ex.Message}");
+            // Only log metadata extraction failures in debug mode to reduce noise
+            Logger.Debug($"Could not extract metadata from {filePath}: {ex.Message}");
             // Return basic metadata even if EXIF extraction fails
             try
             {

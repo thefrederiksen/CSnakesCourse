@@ -40,7 +40,8 @@ builder.Services.AddDbContext<FaceVaultDbContext>(options =>
     })
     .EnableSensitiveDataLogging(builder.Environment.IsDevelopment())
     .EnableDetailedErrors(builder.Environment.IsDevelopment())
-    .LogTo(message => Logger.Debug($"EF Core: {message}"), Microsoft.Extensions.Logging.LogLevel.Information));
+    // Only log EF Core warnings and errors to reduce console spam during scanning
+    .LogTo(message => Logger.Debug($"EF Core: {message}"), Microsoft.Extensions.Logging.LogLevel.Warning));
 
 // Add repositories
 builder.Services.AddScoped<IRepository<Image>, Repository<Image>>();

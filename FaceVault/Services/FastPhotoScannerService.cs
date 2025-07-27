@@ -133,22 +133,39 @@ public class FastPhotoScannerService : IFastPhotoScannerService
                             imagesToAdd.Add(image);
                         }
                         
-                        Interlocked.Increment(ref processedCount);
+                        var currentProcessed = Interlocked.Increment(ref processedCount);
                         
-                        progress?.Report(new ScanProgress 
-                        { 
-                            CurrentFile = Path.GetFileName(filePath), 
-                            ProcessedCount = processedCount, 
-                            TotalCount = allFiles.Count,
-                            Phase = ScanPhase.Processing,
-                            Message = $"Processing {Path.GetFileName(filePath)}"
-                        });
+                        // Report progress only every 10 files to reduce UI overhead
+                        if (currentProcessed % 10 == 0 || currentProcessed == allFiles.Count)
+                        {
+                            progress?.Report(new ScanProgress 
+                            { 
+                                CurrentFile = Path.GetFileName(filePath), 
+                                ProcessedCount = currentProcessed, 
+                                TotalCount = allFiles.Count,
+                                Phase = ScanPhase.Processing,
+                                Message = $"Processing files... ({currentProcessed}/{allFiles.Count})"
+                            });
+                        }
                     }
                     catch (Exception ex)
                     {
                         result.ErrorCount++;
                         result.Errors.Add($"Error processing {filePath}: {ex.Message}");
-                        Interlocked.Increment(ref processedCount);
+                        var currentProcessed = Interlocked.Increment(ref processedCount);
+                        
+                        // Report progress for errors too
+                        if (currentProcessed % 10 == 0 || currentProcessed == allFiles.Count)
+                        {
+                            progress?.Report(new ScanProgress 
+                            { 
+                                CurrentFile = Path.GetFileName(filePath), 
+                                ProcessedCount = currentProcessed, 
+                                TotalCount = allFiles.Count,
+                                Phase = ScanPhase.Processing,
+                                Message = $"Processing files... ({currentProcessed}/{allFiles.Count})"
+                            });
+                        }
                     }
                     finally
                     {
@@ -175,7 +192,11 @@ public class FastPhotoScannerService : IFastPhotoScannerService
                         await transaction.CommitAsync(cancellationToken);
                         
                         result.NewImagesCount += savedCount;
-                        Logger.Info($"Successfully committed batch of {savedCount} images to database");
+                        // Only log batch saves every 500 images to reduce console spam
+                        if (result.NewImagesCount % 500 == 0 || savedCount == imagesToSave.Length)
+                        {
+                            Logger.Info($"Progress: {result.NewImagesCount} total images saved to database");
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -225,7 +246,8 @@ public class FastPhotoScannerService : IFastPhotoScannerService
                 Message = $"Scan complete: {result.NewImagesCount} new images, {result.SkippedCount} skipped, {result.ErrorCount} errors"
             });
 
-            Logger.Info($"Fast photo scan completed: {result.NewImagesCount} new images added, {result.SkippedCount} skipped, {result.ErrorCount} errors");
+            // Final summary log with performance metrics
+            Logger.Info($"Fast photo scan completed: {result.NewImagesCount} new images, {result.SkippedCount} skipped, {result.ErrorCount} errors in {result.Duration.TotalSeconds:F1} seconds ({result.FilesPerSecond:F1} files/sec)");
 
         }
         catch (Exception ex)
@@ -275,7 +297,8 @@ public class FastPhotoScannerService : IFastPhotoScannerService
         }
         catch (Exception ex)
         {
-            Logger.Warning($"Fast processing failed for {filePath}: {ex.Message}");
+            // Only log warnings in debug mode to reduce noise
+            Logger.Debug($"Fast processing failed for {filePath}: {ex.Message}");
             return null;
         }
     }

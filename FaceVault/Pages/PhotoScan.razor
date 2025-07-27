@@ -1,6 +1,6 @@
 @page "/photo-scan"
 @using FaceVault.Services
-@inject IPhotoScannerService PhotoScannerService
+@inject IFastPhotoScannerService PhotoScannerService
 @inject ISettingsService SettingsService
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -74,39 +74,83 @@
                     }
                 </div>
                 <div class="card-body">
-                    @if (isScanning && scanProgress != null)
+                    @if (isScanning)
                     {
                         <div class="mb-3">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>@scanProgress.Message</span>
-                                <span>@scanProgress.ProcessedCount / @scanProgress.TotalCount</span>
-                            </div>
-                            <div class="progress mb-2">
-                                <div class="progress-bar" role="progressbar" 
-                                     style="width: @(scanProgress.PercentComplete)%" 
-                                     aria-valuenow="@(scanProgress.PercentComplete)" 
-                                     aria-valuemin="0" aria-valuemax="100">
-                                    @(scanProgress.PercentComplete.ToString("F1"))%
+                            @if (scanProgress != null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@scanProgress.Message</span>
+                                    <span>
+                                        @if (scanProgress.TotalCount > 0)
+                                        {
+                                            <text><strong>@scanProgress.ProcessedCount</strong> / @scanProgress.TotalCount</text>
+                                        }
+                                        else
+                                        {
+                                            <text><strong>@scanProgress.ProcessedCount</strong> files found...</text>
+                                        }
+                                    </span>
                                 </div>
-                            </div>
-                            <div class="row text-center">
-                                <div class="col-md-3">
-                                    <small class="text-muted">Current File:</small><br>
-                                    <span class="small">@scanProgress.CurrentFile</span>
+                                <div class="progress mb-2" style="height: 24px;">
+                                    @if (scanProgress.TotalCount > 0)
+                                    {
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                             style="width: @(scanProgress.PercentComplete)%" 
+                                             aria-valuenow="@(scanProgress.PercentComplete)" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            @(scanProgress.PercentComplete.ToString("F1"))%
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" 
+                                             style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                            Discovering files...
+                                        </div>
+                                    }
                                 </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Phase:</small><br>
-                                    <span class="badge bg-info">@scanProgress.Phase</span>
+                            }
+                            else
+                            {
+                                <!-- Initial loading state before any progress -->
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary mb-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Initializing scan...</p>
                                 </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Progress:</small><br>
-                                    <strong>@scanProgress.ProcessedCount</strong> / @scanProgress.TotalCount
+                            }
+                            @if (scanProgress != null)
+                            {
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Current File:</small><br>
+                                        <span class="small text-truncate d-inline-block" style="max-width: 150px;">
+                                            @(string.IsNullOrEmpty(scanProgress.CurrentFile) ? "—" : scanProgress.CurrentFile)
+                                        </span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Phase:</small><br>
+                                        <span class="badge bg-info">@scanProgress.Phase</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Progress:</small><br>
+                                        <strong>@scanProgress.ProcessedCount</strong> / @(scanProgress.TotalCount > 0 ? scanProgress.TotalCount.ToString() : "?")
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Speed:</small><br>
+                                        @if (scanProgress.ProcessedCount > 0)
+                                        {
+                                            <text><strong>@((scanProgress.ProcessedCount / Math.Max(1, (DateTime.Now - scanStartTime).TotalSeconds)).ToString("F1"))</strong> files/sec</text>
+                                        }
+                                        else
+                                        {
+                                            <strong>—</strong>
+                                        }
+                                    </div>
                                 </div>
-                                <div class="col-md-3">
-                                    <small class="text-muted">Completed:</small><br>
-                                    <strong>@(scanProgress.PercentComplete.ToString("F1"))%</strong>
-                                </div>
-                            </div>
+                            }
                         </div>
                     }
 
@@ -292,156 +336,3 @@
     </div>
 </div>
 
-@code {
-    private string scanDirectory = "";
-    private bool includeSubdirectories = true;
-    private bool quickScanFirst = true;
-    private bool autoScanOnStartup = false;
-    private int batchSize = 100;
-    private string[] supportedExtensions = Array.Empty<string>();
-    private DateTime? lastScanInfo;
-
-    private bool isScanning = false;
-    private bool hasRunQuickScan = false;
-    private ScanProgress? scanProgress;
-    private ScanResult? scanResult;
-    private ScanResult? quickScanResult;
-    private CancellationTokenSource? cancellationTokenSource;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadSettings();
-        supportedExtensions = PhotoScannerService.GetSupportedExtensions();
-    }
-
-    private async Task LoadSettings()
-    {
-        try
-        {
-            var settings = await SettingsService.GetSettingsAsync();
-            scanDirectory = settings.PhotoDirectory;
-            includeSubdirectories = settings.ScanSubdirectories;
-            autoScanOnStartup = settings.AutoScanOnStartup;
-            batchSize = settings.BatchSize;
-            lastScanInfo = settings.LastScanDate;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Error loading scanner settings: {ex.Message}");
-        }
-    }
-
-    private Task BrowseForDirectory()
-    {
-        // Placeholder for folder browser dialog
-        // In a real implementation, this would open a native folder browser
-        return Task.CompletedTask;
-    }
-
-    private async Task RunQuickScan()
-    {
-        try
-        {
-            isScanning = true;
-            quickScanResult = null;
-            StateHasChanged();
-
-            Logger.Info($"Starting quick scan of directory: {scanDirectory}");
-            
-            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2)); // 2-minute timeout for quick scan
-            quickScanResult = await PhotoScannerService.QuickScanAsync(scanDirectory, cts.Token);
-            hasRunQuickScan = true;
-
-            Logger.Info($"Quick scan completed: {quickScanResult.TotalFilesFound} files found");
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Quick scan failed: {ex.Message}");
-            quickScanResult = new ScanResult
-            {
-                DirectoryPath = scanDirectory,
-                Error = ex.Message,
-                StartTime = DateTime.UtcNow,
-                EndTime = DateTime.UtcNow
-            };
-        }
-        finally
-        {
-            isScanning = false;
-            StateHasChanged();
-        }
-    }
-
-    private async Task StartFullScan()
-    {
-        try
-        {
-            isScanning = true;
-            scanResult = null;
-            scanProgress = null;
-            cancellationTokenSource = new CancellationTokenSource();
-            StateHasChanged();
-
-            Logger.Info($"Starting full scan of directory: {scanDirectory}");
-
-            var progress = new Progress<ScanProgress>(progress =>
-            {
-                scanProgress = progress;
-                StateHasChanged();
-            });
-
-            scanResult = await PhotoScannerService.ScanDirectoryAsync(
-                scanDirectory, 
-                progress, 
-                cancellationTokenSource.Token);
-
-            if (scanResult.IsSuccess)
-            {
-                Logger.Info($"Full scan completed successfully: {scanResult.NewImagesCount} new images added");
-            }
-            else if (scanResult.IsCancelled)
-            {
-                Logger.Info("Scan was cancelled by user");
-            }
-            else
-            {
-                Logger.Error($"Scan failed: {scanResult.Error}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Full scan failed: {ex.Message}");
-            scanResult = new ScanResult
-            {
-                DirectoryPath = scanDirectory,
-                Error = ex.Message,
-                StartTime = DateTime.UtcNow,
-                EndTime = DateTime.UtcNow
-            };
-        }
-        finally
-        {
-            isScanning = false;
-            cancellationTokenSource?.Dispose();
-            cancellationTokenSource = null;
-            StateHasChanged();
-        }
-    }
-
-    private void CancelScan()
-    {
-        cancellationTokenSource?.Cancel();
-        Logger.Info("Scan cancellation requested");
-    }
-
-    private void GoBack()
-    {
-        Navigation.NavigateTo("/");
-    }
-
-    public void Dispose()
-    {
-        cancellationTokenSource?.Cancel();
-        cancellationTokenSource?.Dispose();
-    }
-}
