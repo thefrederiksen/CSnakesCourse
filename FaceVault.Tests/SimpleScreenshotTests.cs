@@ -12,16 +12,18 @@ namespace FaceVault.Tests;
 [DoNotParallelize]
 public sealed class SimpleScreenshotTests
 {
-    private static ServiceProvider? _serviceProvider;
-    private static IScreenshotDetectionService? _screenshotService;
+    // Internal static fields so other test classes can access the shared Python environment
+    internal static ServiceProvider? _serviceProvider;
+    internal static IScreenshotDetectionService? _screenshotService;
     private static string _screenshotsDirectory = string.Empty;
 
-    [ClassInitialize]
-    public static void ClassSetup(TestContext context)
+    [AssemblyInitialize]
+    public static void AssemblySetup(TestContext context)
     {
         try
         {
-            Console.WriteLine("Setting up screenshot detection test environment...");
+            var startTime = DateTime.Now;
+            Console.WriteLine($"[{startTime:HH:mm:ss.fff}] Starting Python environment initialization for FaceVault tests...");
             
             // Get the directory where test images are located
             var testProjectDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
@@ -55,7 +57,10 @@ public sealed class SimpleScreenshotTests
             _serviceProvider = services.BuildServiceProvider();
             _screenshotService = _serviceProvider.GetRequiredService<IScreenshotDetectionService>();
             
-            Console.WriteLine("Screenshot detection test environment setup completed");
+            var endTime = DateTime.Now;
+            var duration = endTime - startTime;
+            Console.WriteLine($"[{endTime:HH:mm:ss.fff}] Python environment initialization completed");
+            Console.WriteLine($"Total initialization time: {duration.TotalSeconds:F2} seconds ({duration.TotalMilliseconds:F0}ms)");
         }
         catch (Exception ex)
         {
@@ -64,10 +69,13 @@ public sealed class SimpleScreenshotTests
         }
     }
 
-    [ClassCleanup]
-    public static void ClassCleanup()
+    [AssemblyCleanup]
+    public static void AssemblyCleanup()
     {
+        Console.WriteLine($"[{DateTime.Now:HH:mm:ss.fff}] Cleaning up Python environment for FaceVault tests...");
         _serviceProvider?.Dispose();
+        _serviceProvider = null;
+        _screenshotService = null;
     }
 
     [TestMethod]

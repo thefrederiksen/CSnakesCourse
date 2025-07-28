@@ -10,93 +10,38 @@ namespace FaceVault.Tests;
 [DoNotParallelize] // Prevent parallel execution due to Python environment conflicts
 public sealed class ScreenshotDetectionTests
 {
-    private ServiceProvider? _serviceProvider;
+    // These will be set from SimpleScreenshotTests' static fields
     private IScreenshotDetectionService? _screenshotService;
-    private ILogger<ScreenshotDetectionService>? _logger;
     
+    // Instance fields for test-specific paths
     private string _testImagesDirectory = string.Empty;
     private string _screenshotsDirectory = string.Empty;
 
     [TestInitialize]
     public void Setup()
     {
+        // Use the shared screenshot service from SimpleScreenshotTests
+        _screenshotService = SimpleScreenshotTests._screenshotService;
+        
+        Assert.IsNotNull(_screenshotService, 
+            "Screenshot detection service not initialized. Make sure SimpleScreenshotTests.AssemblySetup has run.");
+
         // Get the directory where test images are located
         var testProjectDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
         _testImagesDirectory = Path.Combine(testProjectDir!, "Images");
         _screenshotsDirectory = Path.Combine(_testImagesDirectory, "screenshots");
-        
+
+        Console.WriteLine($"Test Images Directory: {_testImagesDirectory}");
+
         // Verify the screenshots directory exists
         Assert.IsTrue(Directory.Exists(_screenshotsDirectory), 
             $"Screenshots directory not found at: {_screenshotsDirectory}");
-
-        // Set up Python environment similar to main FaceVault project
-        var services = new ServiceCollection();
-        
-        // Add logging
-        services.AddLogging(builder =>
-        {
-            builder.ClearProviders();
-            builder.AddConsole();
-            builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
-        });
-
-        // Configure Python services - use the copied Python directory in test output
-        var testBinDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-        var pythonHome = Path.Join(testBinDir, "Python");
-
-        Console.WriteLine($"Test Python Home: {pythonHome}");
-
-        services
-            .WithPython()
-            .WithHome(pythonHome)
-            .FromRedistributable("3.12");
-
-        // Register screenshot detection service
-        services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionService>();
-
-        try
-        {
-            _serviceProvider = services.BuildServiceProvider();
-            
-            // Add timeout for service initialization
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            
-            _logger = _serviceProvider.GetRequiredService<ILogger<ScreenshotDetectionService>>();
-            _screenshotService = _serviceProvider.GetRequiredService<IScreenshotDetectionService>();
-
-            Assert.IsNotNull(_screenshotService, "Screenshot detection service should be initialized");
-            
-            // Test Python environment is working
-            Console.WriteLine("Testing Python environment initialization...");
-            try
-            {
-                var testResult = _screenshotService.IsScreenshotAsync("nonexistent.jpg").Result;
-                Console.WriteLine("Python environment test completed (expected failure for nonexistent file)");
-            }
-            catch (AggregateException aex) when (aex.InnerException is FileNotFoundException)
-            {
-                Console.WriteLine("Python environment is working correctly (expected FileNotFoundException)");
-            }
-        }
-        catch (FileNotFoundException)
-        {
-            // Expected for nonexistent file test - Python environment is working
-            Console.WriteLine("Python environment is working correctly");
-        }
-        catch (OperationCanceledException)
-        {
-            Assert.Fail("Test setup timed out - Python environment may not be initializing properly");
-        }
-        catch (Exception ex)
-        {
-            Assert.Fail($"Failed to initialize test environment: {ex.Message}\nStackTrace: {ex.StackTrace}");
-        }
     }
 
     [TestCleanup]
     public void Cleanup()
     {
-        _serviceProvider?.Dispose();
+        // Don't dispose the service provider here - it's managed by AssemblyCleanup
     }
 
     [TestMethod]

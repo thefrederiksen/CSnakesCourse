@@ -12,7 +12,10 @@
       "Bash(dotnet test:*)",
       "Bash(find:*)",
       "Bash(cp:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(mkdir:*)",
+      "Bash(del HelloWorld.TestsUnitTest1.cs)",
+      "Bash(true)"
     ],
     "deny": []
   }
