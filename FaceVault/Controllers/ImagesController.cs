@@ -11,12 +11,14 @@ public class ImagesController : ControllerBase
 {
     private readonly FaceVaultDbContext _context;
     private readonly IImageService _imageService;
+    private readonly IHeicConverterService _heicConverter;
     private readonly ILogger<ImagesController> _logger;
 
-    public ImagesController(FaceVaultDbContext context, IImageService imageService, ILogger<ImagesController> logger)
+    public ImagesController(FaceVaultDbContext context, IImageService imageService, IHeicConverterService heicConverter, ILogger<ImagesController> logger)
     {
         _context = context;
         _imageService = imageService;
+        _heicConverter = heicConverter;
         _logger = logger;
     }
 
@@ -39,16 +41,16 @@ public class ImagesController : ControllerBase
 
             var extension = Path.GetExtension(image.FilePath).ToLowerInvariant();
             
-            // For HEIC/HEIF files, try to convert to JPEG for browser compatibility
+            // For HEIC/HEIF files, convert to JPEG for browser compatibility
             if (extension == ".heic" || extension == ".heif")
             {
                 try
                 {
-                    // Try to get converted thumbnail as JPEG
-                    var thumbnailBytes = await _imageService.GetImageThumbnailAsync(image.FilePath, 800);
-                    if (thumbnailBytes != null && thumbnailBytes.Length > 0)
+                    // Convert HEIC to JPEG for display
+                    var jpegBytes = await _heicConverter.ConvertHeicToJpegAsync(image.FilePath, 1200, 90);
+                    if (jpegBytes != null && jpegBytes.Length > 0)
                     {
-                        return File(thumbnailBytes, "image/jpeg");
+                        return File(jpegBytes, "image/jpeg");
                     }
                 }
                 catch (Exception ex)

@@ -102,6 +102,7 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionService>();
 builder.Services.AddScoped<IScreenshotDatabaseService, ScreenshotDatabaseService>();
 builder.Services.AddScoped<IFileOpenService, FileOpenService>();
+builder.Services.AddScoped<IHeicConverterService, HeicConverterService>();
 builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.
