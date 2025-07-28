@@ -7,6 +7,7 @@
 @inject ISettingsService SettingsService
 @inject IDatabaseStatsService DatabaseStatsService
 @inject IDatabaseSyncService DatabaseSyncService
+@inject IScreenshotDatabaseService ScreenshotDatabaseService
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -36,10 +37,10 @@
                             <label for="scanDirectory" class="form-label">Directory to Scan</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" id="scanDirectory" 
-                                       @bind="scanDirectory" placeholder="Select directory to scan...">
-                                <button class="btn btn-outline-secondary" type="button" @onclick="UseCurrentPhotoDirectory">
-                                    <span class="oi oi-folder" aria-hidden="true"></span> Use Photo Directory
-                                </button>
+                                       value="@scanDirectory" readonly>
+                                <span class="input-group-text bg-light">
+                                    <span class="oi oi-folder" aria-hidden="true"></span>
+                                </span>
                             </div>
                             <div class="form-text">Directory: <strong>@scanDirectory</strong></div>
                         </div>
@@ -47,27 +48,27 @@
                     
                     <div class="row">
                         <div class="col-md-4">
-                            <div class="form-check form-switch">
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="includeSubdirectories" 
-                                       @bind="includeSubdirectories">
+                                       checked="@includeSubdirectories" disabled>
                                 <label class="form-check-label" for="includeSubdirectories">
                                     Include subdirectories
                                 </label>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="form-check form-switch">
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="overwriteExisting" 
-                                       @bind="overwriteExisting">
+                                       checked="@overwriteExisting" disabled>
                                 <label class="form-check-label" for="overwriteExisting">
                                     Update existing records
                                 </label>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="form-check form-switch">
+                            <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="useFastScanner" 
-                                       @bind="useFastScanner">
+                                       checked="@useFastScanner" disabled>
                                 <label class="form-check-label" for="useFastScanner">
                                     <strong>Fast scan mode</strong>
                                     <br><small class="text-muted">10x faster, basic metadata only</small>
@@ -223,6 +224,156 @@
                 </div>
             }
 
+            <!-- Screenshot Detection Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="oi oi-camera-slr" aria-hidden="true"></span> Screenshot Detection
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (screenshotStats != null)
+                    {
+                        <div class="row text-center mb-3">
+                            <div class="col-md-3">
+                                <h5 class="text-primary">@screenshotStats.TotalImages</h5>
+                                <small>Total Images</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h5 class="text-success">@screenshotStats.PhotoCount</h5>
+                                <small>Photos</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h5 class="text-warning">@screenshotStats.ScreenshotCount</h5>
+                                <small>Screenshots</small>
+                            </div>
+                            <div class="col-md-3">
+                                <h5 class="text-info">@screenshotStats.UnprocessedCount</h5>
+                                <small>Unprocessed</small>
+                            </div>
+                        </div>
+
+                        @if (screenshotStats.TotalImages > 0)
+                        {
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: @((double)screenshotStats.PhotoCount / screenshotStats.TotalImages * 100)%">
+                                    Photos: @(screenshotStats.PhotoCount)
+                                </div>
+                                <div class="progress-bar bg-warning" role="progressbar" 
+                                     style="width: @((double)screenshotStats.ScreenshotCount / screenshotStats.TotalImages * 100)%">
+                                    Screenshots: @(screenshotStats.ScreenshotCount)
+                                </div>
+                                <div class="progress-bar bg-light text-dark" role="progressbar" 
+                                     style="width: @((double)screenshotStats.UnprocessedCount / screenshotStats.TotalImages * 100)%">
+                                    Unprocessed: @(screenshotStats.UnprocessedCount)
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (isScreenshotScanning && screenshotProgress != null)
+                    {
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Screenshot Detection Progress</span>
+                                <span>@screenshotProgress.ProcessedImages / @screenshotProgress.TotalImages</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 24px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                     style="width: @(screenshotProgress.ProgressPercentage)%" 
+                                     aria-valuenow="@(screenshotProgress.ProgressPercentage)" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    @(screenshotProgress.ProgressPercentage.ToString("F1"))%
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Processing:</small><br>
+                                    <span class="small text-truncate d-block">@screenshotProgress.CurrentFile</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Screenshots Found:</small><br>
+                                    <strong class="text-warning">@screenshotProgress.ScreenshotsFound</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Errors:</small><br>
+                                    <strong class="text-danger">@screenshotProgress.ErrorCount</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Progress:</small><br>
+                                    <strong>@(screenshotProgress.ProgressPercentage.ToString("F1"))%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (screenshotScanResult != null && !isScreenshotScanning)
+                    {
+                        <div class="alert alert-@(screenshotScanResult.WasCancelled ? "warning" : "success")" role="alert">
+                            <h6 class="alert-heading">
+                                @if (screenshotScanResult.WasCancelled)
+                                {
+                                    <span class="oi oi-warning" aria-hidden="true"></span><text> Screenshot Detection Cancelled</text>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-check" aria-hidden="true"></span><text> Screenshot Detection Completed</text>
+                                }
+                            </h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong class="text-primary">@screenshotScanResult.TotalImages</strong><br>
+                                    <small>Total Images</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-success">@screenshotScanResult.PhotosFound</strong><br>
+                                    <small>Photos</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-warning">@screenshotScanResult.ScreenshotsFound</strong><br>
+                                    <small>Screenshots</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-danger">@screenshotScanResult.ErrorCount</strong><br>
+                                    <small>Errors</small>
+                                </div>
+                            </div>
+                            <hr>
+                            <p class="mb-0">
+                                Duration: <strong>@(screenshotScanResult.Duration.ToString(@"mm\:ss"))</strong> | 
+                                Processing Speed: <strong>@((screenshotScanResult.Duration.TotalSeconds > 0 ? screenshotScanResult.ProcessedImages / screenshotScanResult.Duration.TotalSeconds : 0).ToString("F1"))</strong> images/sec
+                            </p>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-info" @onclick="RefreshScreenshotStats">
+                            <span class="oi oi-reload" aria-hidden="true"></span> Refresh Stats
+                        </button>
+                        <div>
+                            @if (isScreenshotScanning)
+                            {
+                                <button class="btn btn-outline-danger me-2" @onclick="CancelScreenshotScan">
+                                    <span class="oi oi-media-stop" aria-hidden="true"></span> Cancel
+                                </button>
+                            }
+                            <button class="btn btn-warning" @onclick="StartScreenshotDetection" 
+                                    disabled="@(isScreenshotScanning || isScanning)">
+                                @if (isScreenshotScanning)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span class="oi oi-camera-slr" aria-hidden="true"></span> 
+                                Detect All Screenshots
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="card">
                 <div class="card-body">
@@ -234,7 +385,7 @@
                         </div>
                         <div>
                             <button class="btn btn-primary" @onclick="StartDatabaseScan" 
-                                    disabled="@(isScanning || string.IsNullOrEmpty(scanDirectory) || !Directory.Exists(scanDirectory))">
+                                    disabled="@(isScanning || isScreenshotScanning || string.IsNullOrEmpty(scanDirectory) || !Directory.Exists(scanDirectory))">
                                 @if (isScanning)
                                 {
                                     <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -316,7 +467,16 @@
                         <li>Reads EXIF data (camera, location, settings)</li>
                         <li>Calculates file hashes for duplicates</li>
                         <li>Populates the FaceVault database</li>
-                        <li>Skips files already in the database (unless updating)</li>
+                        <li>Processes all files with current settings</li>
+                    </ul>
+                    
+                    <h6 class="mt-3">Screenshot Detection:</h6>
+                    <ul class="small">
+                        <li>Analyzes all images in the database</li>
+                        <li>Uses AI algorithms to detect screenshots</li>
+                        <li>Checks filename patterns, EXIF data, dimensions</li>
+                        <li>Updates IsScreenshot flag for all images</li>
+                        <li>Processes ALL images regardless of previous scans</li>
                     </ul>
                     
                     <h6 class="mt-3">Performance Tips:</h6>
@@ -336,7 +496,7 @@
 @code {
     private string scanDirectory = "";
     private bool includeSubdirectories = true;
-    private bool overwriteExisting = false;
+    private bool overwriteExisting = true;
     private bool useFastScanner = true;
     private int batchSize = 100;
     private string[] supportedExtensions = Array.Empty<string>();
@@ -353,6 +513,13 @@
     private int processedImages = 0;
     private int imagesWithFaces = 0;
     private int totalPeople = 0;
+    
+    // Screenshot detection
+    private bool isScreenshotScanning = false;
+    private ScreenshotScanProgress? screenshotProgress;
+    private ScreenshotScanResult? screenshotScanResult;
+    private ScreenshotStatistics? screenshotStats;
+    private CancellationTokenSource? screenshotCancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
@@ -376,6 +543,7 @@
             
             // Load database statistics
             await RefreshStats();
+            await RefreshScreenshotStats();
         }
         catch (Exception ex)
         {
@@ -400,19 +568,6 @@
         }
     }
 
-    private async Task UseCurrentPhotoDirectory()
-    {
-        try
-        {
-            var settings = await SettingsService.GetSettingsAsync();
-            scanDirectory = settings.PhotoDirectory;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Error loading photo directory: {ex.Message}");
-        }
-    }
 
     private async Task StartDatabaseScan()
     {
@@ -433,11 +588,11 @@
 
             Logger.Info($"Starting database scan of directory: {scanDirectory}");
 
-            var progress = new Progress<ScanProgress>(progress =>
+            var progress = new Progress<ScanProgress>(async progress =>
             {
                 scanProgress = progress;
                 UpdateSpeed();
-                StateHasChanged();
+                await InvokeAsync(StateHasChanged);
             });
 
             // Update settings to match current scan preferences
@@ -528,9 +683,92 @@
         Navigation.NavigateTo("/");
     }
 
+    private async Task RefreshScreenshotStats()
+    {
+        try
+        {
+            screenshotStats = await ScreenshotDatabaseService.GetScreenshotStatisticsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error refreshing screenshot statistics: {ex.Message}");
+        }
+    }
+
+    private async Task StartScreenshotDetection()
+    {
+        if (isScreenshotScanning || isScanning)
+        {
+            return;
+        }
+
+        try
+        {
+            isScreenshotScanning = true;
+            screenshotScanResult = null;
+            screenshotProgress = null;
+            screenshotCancellationTokenSource = new CancellationTokenSource();
+            StateHasChanged();
+
+            Logger.Info("Starting screenshot detection scan");
+
+            var progress = new Progress<ScreenshotScanProgress>(async progress =>
+            {
+                screenshotProgress = progress;
+                await InvokeAsync(StateHasChanged);
+            });
+
+            screenshotScanResult = await ScreenshotDatabaseService.ScanAllImagesAsync(
+                progress,
+                screenshotCancellationTokenSource.Token);
+
+            if (screenshotScanResult.WasCancelled)
+            {
+                Logger.Info("Screenshot detection scan was cancelled by user");
+            }
+            else
+            {
+                Logger.Info($"Screenshot detection scan completed: {screenshotScanResult.ScreenshotsFound} screenshots found out of {screenshotScanResult.TotalImages} images");
+                await RefreshScreenshotStats(); // Update statistics after successful scan
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Screenshot detection scan failed: {ex.Message}");
+            screenshotScanResult = new ScreenshotScanResult
+            {
+                TotalImages = screenshotStats?.TotalImages ?? 0,
+                ErrorCount = 1,
+                WasCancelled = false,
+                Duration = TimeSpan.Zero
+            };
+            screenshotScanResult.Errors.Add(ex.Message);
+        }
+        finally
+        {
+            isScreenshotScanning = false;
+            screenshotCancellationTokenSource?.Dispose();
+            screenshotCancellationTokenSource = null;
+            await InvokeAsync(StateHasChanged);
+            
+            // Ensure UI is fully updated
+            await Task.Delay(100);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CancelScreenshotScan()
+    {
+        screenshotCancellationTokenSource?.Cancel();
+        Logger.Info("Screenshot detection scan cancellation requested");
+    }
+
     public void Dispose()
     {
         cancellationTokenSource?.Cancel();
         cancellationTokenSource?.Dispose();
+        screenshotCancellationTokenSource?.Cancel();
+        screenshotCancellationTokenSource?.Dispose();
     }
 }

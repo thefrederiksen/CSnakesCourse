@@ -13,9 +13,9 @@ public class MemoryService : IMemoryService
         _context = context;
     }
 
-    public async Task<MemoryCollection> GetTodaysMemoriesAsync(DateTime date)
+    public async Task<MemoryCollection> GetTodaysMemoriesAsync(DateTime date, bool excludeScreenshots = false)
     {
-        var yearGroups = await GetPhotosByDateAsync(date);
+        var yearGroups = await GetPhotosByDateAsync(date, excludeScreenshots);
         var totalPhotos = yearGroups.Sum(g => g.PhotoCount);
 
         return new MemoryCollection
@@ -26,16 +26,24 @@ public class MemoryService : IMemoryService
         };
     }
 
-    public async Task<List<YearGroup>> GetPhotosByDateAsync(DateTime date)
+    public async Task<List<YearGroup>> GetPhotosByDateAsync(DateTime date, bool excludeScreenshots = false)
     {
         try
         {
             // Get photos from this date across all years
-            var photos = await _context.Images
+            var query = _context.Images
                 .AsNoTracking()
                 .Where(img => img.DateTaken.HasValue && 
                              img.DateTaken.Value.Month == date.Month && 
-                             img.DateTaken.Value.Day == date.Day)
+                             img.DateTaken.Value.Day == date.Day);
+            
+            // Add screenshot filter if requested
+            if (excludeScreenshots)
+            {
+                query = query.Where(img => !img.IsScreenshot);
+            }
+            
+            var photos = await query
                 .OrderByDescending(img => img.DateTaken)
                 .Take(200) // Limit to prevent performance issues
                 .ToListAsync();

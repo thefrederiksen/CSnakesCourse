@@ -17,21 +17,31 @@
                     <p class="text-muted mb-0">@GetSubtitle()</p>
                 </div>
                 
-                <!-- Date Navigation -->
-                <div class="btn-group" role="group">
-                    <button class="btn btn-outline-secondary" @onclick="LoadPreviousDay" title="Previous day">
-                        <span class="oi oi-chevron-left" aria-hidden="true"></span>
-                    </button>
-                    <button class="btn btn-outline-primary" @onclick="LoadToday" title="Today">
-                        <span class="oi oi-home" aria-hidden="true"></span>
-                        Today
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="LoadNextDay" 
-                            disabled="@(currentDate >= DateTime.Today)" title="Next day">
-                        <span class="oi oi-chevron-right" aria-hidden="true"></span>
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="RefreshMemories" title="Refresh">
-                        <span class="oi oi-reload" aria-hidden="true"></span>
+                <!-- Date Navigation and Filters -->
+                <div class="d-flex gap-2">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-secondary" @onclick="LoadPreviousDay" title="Previous day">
+                            <span class="oi oi-chevron-left" aria-hidden="true"></span>
+                        </button>
+                        <button class="btn btn-outline-primary" @onclick="LoadToday" title="Today">
+                            <span class="oi oi-home" aria-hidden="true"></span>
+                            Today
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="LoadNextDay" 
+                                disabled="@(currentDate >= DateTime.Today)" title="Next day">
+                            <span class="oi oi-chevron-right" aria-hidden="true"></span>
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="RefreshMemories" title="Refresh">
+                            <span class="oi oi-reload" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    
+                    <!-- Screenshot Filter -->
+                    <button class="btn @(excludeScreenshots ? "btn-success" : "btn-outline-secondary")" 
+                            @onclick="ToggleScreenshotFilter" 
+                            title="@(excludeScreenshots ? "Showing only real photos (screenshots excluded)" : "Showing all photos including screenshots")">
+                        <span class="oi oi-camera-slr" aria-hidden="true"></span>
+                        @(excludeScreenshots ? "Photos Only" : "Include Screenshots")
                     </button>
                 </div>
             </div>
@@ -119,15 +129,18 @@
                             @foreach (var photo in yearGroup.Photos.Take(12)) // Limit to 12 photos per year for performance
                             {
                                 <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                                    <div class="card border-0 shadow-sm photo-card">
+                                    <div class="card border-0 shadow-sm photo-card" @onclick="() => OpenImage(photo)">
                                         <div class="photo-container position-relative">
                                             <ImageThumbnail Photo="photo" />
                                             
                                             <!-- Photo overlay with info -->
                                             <div class="photo-overlay">
-                                                <small class="text-white">
-                                                    @photo.DateTaken?.ToString("HH:mm")
-                                                </small>
+                                                <div class="d-flex flex-column align-items-center justify-content-center h-100">
+                                                    <span class="oi oi-external-link mb-1" aria-hidden="true"></span>
+                                                    <small class="text-white">
+                                                        @photo.DateTaken?.ToString("HH:mm")
+                                                    </small>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

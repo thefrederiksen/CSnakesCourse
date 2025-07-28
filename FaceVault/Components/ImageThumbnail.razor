@@ -9,6 +9,14 @@
          title="@GetPhotoTooltip()"
          loading="lazy" />
 }
+else if (!string.IsNullOrEmpty(fallbackImageUrl))
+{
+    <img src="@fallbackImageUrl" 
+         class="card-img-top photo-thumbnail" 
+         alt="@Photo.FileName"
+         title="@GetPhotoTooltip()"
+         loading="lazy" />
+}
 else if (isLoading)
 {
     <div class="card-img-top photo-placeholder d-flex align-items-center justify-content-center">
@@ -20,7 +28,19 @@ else if (isLoading)
 else
 {
     <div class="card-img-top photo-placeholder d-flex align-items-center justify-content-center">
-        <span class="oi oi-image text-muted" aria-hidden="true"></span>
+        <div class="text-center">
+            @if (IsHeicFile())
+            {
+                <span class="oi oi-camera-slr text-warning mb-1" style="font-size: 2rem;" aria-hidden="true"></span>
+                <small class="d-block text-warning fw-bold">HEIC</small>
+                <small class="d-block text-muted">Click to view</small>
+            }
+            else
+            {
+                <span class="oi oi-image text-muted mb-1" aria-hidden="true"></span>
+                <small class="d-block text-muted">No preview</small>
+            }
+        </div>
     </div>
 }
 
@@ -28,23 +48,42 @@ else
     [Parameter] public Models.Image Photo { get; set; } = default!;
     
     private string imageDataUrl = string.Empty;
+    private string fallbackImageUrl = string.Empty;
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Try to load thumbnail first
             imageDataUrl = await ImageService.GetImageDataUrlAsync(Photo.FilePath, 250);
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error loading thumbnail for {Photo.FilePath}: {ex.Message}");
+            Logger.Warning($"Error loading thumbnail for {Photo.FilePath}: {ex.Message}");
+            
+            // Try to use direct file URL as fallback
+            try
+            {
+                fallbackImageUrl = $"/api/images/{Photo.Id}/view";
+            }
+            catch (Exception fallbackEx)
+            {
+                Logger.Error($"Error setting fallback URL for {Photo.FilePath}: {fallbackEx.Message}");
+            }
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
         }
+    }
+
+    private bool IsHeicFile()
+    {
+        if (Photo?.FilePath == null) return false;
+        var extension = Path.GetExtension(Photo.FilePath).ToLowerInvariant();
+        return extension == ".heic" || extension == ".heif";
     }
 
     private string GetPhotoTooltip()
@@ -57,6 +96,10 @@ else
         if (Photo.Width > 0 && Photo.Height > 0)
         {
             tooltip += $"\nSize: {Photo.Width}×{Photo.Height}";
+        }
+        if (IsHeicFile())
+        {
+            tooltip += $"\nHEIC format - Click to open in default viewer";
         }
         return tooltip;
     }

@@ -3,6 +3,8 @@ using FaceVault.Services;
 using FaceVault.Models;
 using FaceVault.Repositories;
 using Microsoft.EntityFrameworkCore;
+using CSnakes.Runtime;
+using CSnakes.Runtime.PackageManagement;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,10 +40,33 @@ pathService.EnsureDirectoriesExist();
 // Migrate database from old location if needed
 pathService.MigrateDatabaseIfNeeded();
 
+// Initialize Python environment with CSnakes
+Logger.Info("Initializing Python environment...");
+var exeDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+var pythonHome = Path.Join(exeDir, "Python");
+var requirements = Path.Combine(pythonHome, "requirements.txt");
+
+if (!File.Exists(requirements))
+{
+    Logger.Warning("No requirements.txt file found - Python packages may not be available");
+}
+
+var virtualDir = Path.Join(pythonHome, ".venv");
+Logger.Info($"Python Home: {pythonHome}");
+Logger.Info($"Virtual Environment Directory: {virtualDir}");
+
 // Add Entity Framework with proper user data path and SQLite optimizations
 var dbPath = pathService.GetDatabasePath();
 var connectionString = $"Data Source={dbPath};Cache=Shared;";
 Logger.Info($"Database path: {pathService.GetDisplayPath(dbPath)}");
+
+// Configure Python services with CSnakes
+builder.Services
+    .WithPython()
+    .WithHome(pythonHome)
+    .FromRedistributable("3.12") // Use redistributable strategy to ensure Python is available
+    .WithVirtualEnvironment(virtualDir)
+    .WithUvInstaller(); // Install packages from requirements.txt on startup
 
 builder.Services.AddDbContext<FaceVaultDbContext>(options =>
     options.UseSqlite(connectionString, sqliteOptions =>
@@ -74,11 +99,15 @@ builder.Services.AddScoped<IDatabaseStatsService, DatabaseStatsService>();
 builder.Services.AddScoped<IDatabaseSyncService, DatabaseSyncService>();
 builder.Services.AddScoped<IMemoryService, MemoryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionService>();
+builder.Services.AddScoped<IScreenshotDatabaseService, ScreenshotDatabaseService>();
+builder.Services.AddScoped<IFileOpenService, FileOpenService>();
 builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+builder.Services.AddControllers();
 builder.Services.AddSingleton<ImageHashService>();
 
 var app = builder.Build();
@@ -101,10 +130,25 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.MapBlazorHub();
+app.MapControllers();
 app.MapFallbackToPage("/_Host");
 
 try
 {
+    // Initialize Python environment
+    Logger.Info("Creating Python environment...");
+    var pythonEnv = app.Services.GetRequiredService<IPythonEnvironment>();
+    Logger.Info("Python environment created successfully");
+
+    // Install Python packages if requirements.txt exists
+    if (File.Exists(requirements))
+    {
+        Logger.Info("Installing Python packages...");
+        var installer = app.Services.GetRequiredService<IPythonPackageInstaller>();
+        await installer.InstallPackagesFromRequirements(pythonHome);
+        Logger.Info("Python packages installed successfully");
+    }
+
     // Initialize database on startup
     using (var scope = app.Services.CreateScope())
     {

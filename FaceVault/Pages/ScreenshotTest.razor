@@ -1,0 +1,83 @@
+@page "/screenshot-test"
+@using FaceVault.Services
+@inject IScreenshotDetectionService ScreenshotService
+
+<PageTitle>Screenshot Detection Test</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2>Screenshot Detection Test</h2>
+            <p class="text-muted">Test C# integration with Python screenshot detection</p>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Test Controls</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group me-2" role="group">
+                        <button class="btn btn-primary" @onclick="TestScreenshotDetection" disabled="@isRunning">
+                            @if (isRunning)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            Test Screenshot Detection
+                        </button>
+                        <button class="btn btn-success" @onclick="TestBasicPython" disabled="@isRunning">
+                            Test Basic Python
+                        </button>
+                    </div>
+                    <button class="btn btn-secondary" @onclick="ClearResults">Clear Results</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (testResults.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                @foreach (var result in testResults)
+                {
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">@result.TestName</h6>
+                            <span class="badge @(result.Success ? "bg-success" : "bg-danger")">
+                                @(result.Success ? "PASS" : "FAIL")
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            @if (result.Results.Any())
+                            {
+                                <ul class="list-unstyled mb-0">
+                                    @foreach (var line in result.Results)
+                                    {
+                                        <li class="@GetResultLineClass(line)">
+                                            <small>@line</small>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-danger">
+                    <h6>Error</h6>
+                    <pre>@errorMessage</pre>
+                </div>
+            </div>
+        </div>
+    }
+</div>

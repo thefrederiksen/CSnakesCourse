@@ -5,10 +5,16 @@ namespace FaceVault.Services;
 
 public class ImageService : IImageService
 {
+    private readonly ILogger<ImageService> _logger;
     private readonly string[] _supportedExtensions = 
     {
-        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"
+        ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp", ".heic", ".heif"
     };
+
+    public ImageService(ILogger<ImageService> logger)
+    {
+        _logger = logger;
+    }
 
     public async Task<byte[]?> GetImageBytesAsync(string filePath)
     {
@@ -21,7 +27,7 @@ public class ImageService : IImageService
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error reading image {filePath}: {ex.Message}");
+            _logger.LogError($"Error reading image {filePath}: {ex.Message}");
             return null;
         }
     }
@@ -32,6 +38,15 @@ public class ImageService : IImageService
         {
             if (!File.Exists(filePath) || !IsValidImagePath(filePath))
                 return Task.FromResult<byte[]?>(null);
+
+            var extension = Path.GetExtension(filePath).ToLowerInvariant();
+            
+            // HEIC/HEIF files need special handling as System.Drawing can't process them
+            if (extension == ".heic" || extension == ".heif")
+            {
+                _logger.LogWarning($"HEIC/HEIF thumbnail generation not supported for {filePath}. Use fallback.");
+                return Task.FromResult<byte[]?>(null); // This will trigger the fallback URL
+            }
 
             // Suppress System.Drawing platform warnings - this is a Windows-focused application
 #pragma warning disable CA1416
@@ -57,7 +72,7 @@ public class ImageService : IImageService
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error creating thumbnail for {filePath}: {ex.Message}");
+            _logger.LogError($"Error creating thumbnail for {filePath}: {ex.Message}");
             return Task.FromResult<byte[]?>(null);
         }
     }
@@ -101,9 +116,15 @@ public class ImageService : IImageService
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error creating data URL for {filePath}: {ex.Message}");
+            _logger.LogError($"Error creating data URL for {filePath}: {ex.Message}");
             return string.Empty;
         }
+    }
+
+    public async Task<byte[]?> GetImageThumbnailAsync(string filePath, int maxSize = 300)
+    {
+        // This is an alias for GetThumbnailAsync
+        return await GetThumbnailAsync(filePath, maxSize);
     }
 
     private static (int width, int height) CalculateThumbnailSize(int originalWidth, int originalHeight, int maxSize)

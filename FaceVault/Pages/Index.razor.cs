@@ -7,11 +7,13 @@ public partial class Index : ComponentBase, IDisposable
 {
     [Inject] protected IMemoryService MemoryService { get; set; } = default!;
     [Inject] protected IImageService ImageService { get; set; } = default!;
+    [Inject] protected IFileOpenService FileOpenService { get; set; } = default!;
 
     private MemoryCollection? todaysMemories;
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private DateTime currentDate = DateTime.Today;
+    private bool excludeScreenshots = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -27,7 +29,7 @@ public partial class Index : ComponentBase, IDisposable
             StateHasChanged();
 
             Logger.Info($"Loading memories for {currentDate:MMMM d}");
-            todaysMemories = await MemoryService.GetTodaysMemoriesAsync(currentDate);
+            todaysMemories = await MemoryService.GetTodaysMemoriesAsync(currentDate, excludeScreenshots);
             
             Logger.Info($"Loaded {todaysMemories.TotalPhotos} photos across {todaysMemories.YearGroups.Count} years");
         }
@@ -70,6 +72,21 @@ public partial class Index : ComponentBase, IDisposable
         await LoadTodaysMemories();
     }
 
+    private async Task ToggleScreenshotFilter()
+    {
+        excludeScreenshots = !excludeScreenshots;
+        await LoadTodaysMemories();
+    }
+
+    private void OpenImage(Models.Image image)
+    {
+        if (image != null && !string.IsNullOrEmpty(image.FilePath))
+        {
+            Logger.Info($"Opening image: {image.FilePath}");
+            FileOpenService.OpenInDefaultViewer(image.FilePath);
+        }
+    }
+
     private string GetPageTitle()
     {
         if (currentDate.Date == DateTime.Today)
@@ -88,11 +105,13 @@ public partial class Index : ComponentBase, IDisposable
 
     private string GetSubtitle()
     {
-        if (currentDate.Date == DateTime.Today)
-            return "Photos taken on this day in previous years";
-        
-        var daysAgo = (DateTime.Today - currentDate.Date).Days;
-        return $"Photos from {daysAgo} day{(daysAgo == 1 ? "" : "s")} ago";
+        var baseSubtitle = currentDate.Date == DateTime.Today 
+            ? "Photos taken on this day in previous years"
+            : $"Photos from {(DateTime.Today - currentDate.Date).Days} day{((DateTime.Today - currentDate.Date).Days == 1 ? "" : "s")} ago";
+            
+        return excludeScreenshots 
+            ? $"{baseSubtitle} (screenshots excluded)"
+            : baseSubtitle;
     }
 
 
