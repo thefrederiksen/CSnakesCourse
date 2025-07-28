@@ -94,8 +94,8 @@ public sealed class SimpleScreenshotTests
     }
 
     [TestMethod]
-    [Timeout(20000)]
-    public async Task SingleScreenshot_IsDetectedCorrectly()
+    [Timeout(30000)]
+    public async Task AllScreenshotsInDirectory_AreDetectedCorrectly()
     {
         Assert.IsNotNull(_screenshotService, "Screenshot service not initialized");
         
@@ -105,24 +105,57 @@ public sealed class SimpleScreenshotTests
             
         Assert.IsTrue(imageFiles.Length > 0, "No image files found for testing");
         
-        var testFile = imageFiles.First();
-        Console.WriteLine($"Testing screenshot detection on: {Path.GetFileName(testFile)}");
+        Console.WriteLine($"\nTesting {imageFiles.Length} screenshot files in directory: {_screenshotsDirectory}");
+        Console.WriteLine(new string('-', 80));
         
-        try
+        int successCount = 0;
+        var failedFiles = new List<string>();
+        
+        foreach (var testFile in imageFiles)
         {
-            var result = await _screenshotService.DetectScreenshotAsync(testFile);
+            var fileName = Path.GetFileName(testFile);
+            Console.Write($"Testing '{fileName}'... ");
             
-            Assert.IsNotNull(result, "Detection result should not be null");
-            Assert.IsTrue(result.IsScreenshot, 
-                $"File '{Path.GetFileName(testFile)}' should be detected as a screenshot. " +
-                $"Confidence: {result.Confidence:F2}, Error: {result.Error ?? "None"}");
-            Assert.IsTrue(result.Confidence > 0, "Confidence should be greater than 0");
-            
-            Console.WriteLine($"✓ Screenshot detected successfully with confidence: {result.Confidence:F2}");
+            try
+            {
+                var result = await _screenshotService.DetectScreenshotAsync(testFile);
+                
+                Assert.IsNotNull(result, "Detection result should not be null");
+                
+                if (result.IsScreenshot)
+                {
+                    Console.WriteLine($"✓ DETECTED as screenshot (confidence: {result.Confidence:F2})");
+                    successCount++;
+                }
+                else
+                {
+                    Console.WriteLine($"✗ NOT detected as screenshot (confidence: {result.Confidence:F2})");
+                    failedFiles.Add($"{fileName} - Confidence: {result.Confidence:F2}");
+                }
+                
+                Assert.IsTrue(result.IsScreenshot, 
+                    $"File '{fileName}' should be detected as a screenshot. " +
+                    $"Confidence: {result.Confidence:F2}, Error: {result.Error ?? "None"}");
+                Assert.IsTrue(result.Confidence > 0, "Confidence should be greater than 0");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"✗ FAILED with error: {ex.Message}");
+                failedFiles.Add($"{fileName} - Error: {ex.Message}");
+                Assert.Fail($"Screenshot detection failed for '{fileName}': {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        
+        Console.WriteLine(new string('-', 80));
+        Console.WriteLine($"Summary: {successCount}/{imageFiles.Length} screenshots detected successfully");
+        
+        if (failedFiles.Any())
         {
-            Assert.Fail($"Screenshot detection failed: {ex.Message}");
+            Console.WriteLine("\nFailed detections:");
+            foreach (var failure in failedFiles)
+            {
+                Console.WriteLine($"  - {failure}");
+            }
         }
     }
 
