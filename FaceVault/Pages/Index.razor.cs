@@ -8,15 +8,20 @@ public partial class Index : ComponentBase, IDisposable
 {
     [Inject] protected IMemoryService MemoryService { get; set; } = default!;
     [Inject] protected ILogger<Index> Logger { get; set; } = default!;
+    [Inject] protected ISettingsService SettingsService { get; set; } = default!;
 
     private MemoryCollection? todaysMemories;
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private DateTime currentDate = DateTime.Today;
-    private const bool excludeScreenshots = true; // Always exclude screenshots from memories
+    private bool excludeScreenshots = true;
 
     protected override async Task OnInitializedAsync()
     {
+        // Load settings to check if we should exclude screenshots
+        var settings = await SettingsService.GetSettingsAsync();
+        excludeScreenshots = settings.ExcludeScreenshotsFromMemories;
+        
         await LoadTodaysMemories();
     }
 
@@ -28,7 +33,7 @@ public partial class Index : ComponentBase, IDisposable
             errorMessage = string.Empty;
             StateHasChanged();
 
-            Logger.LogInformation("Loading memories for {Date:MMMM d} (excluding screenshots)", currentDate);
+            Logger.LogInformation("Loading memories for {Date:MMMM d} (excluding screenshots: {ExcludeScreenshots})", currentDate, excludeScreenshots);
             todaysMemories = await MemoryService.GetTodaysMemoriesAsync(currentDate, excludeScreenshots);
             
             Logger.LogInformation("Loaded {TotalPhotos} photos across {YearGroups} years", todaysMemories.TotalPhotos, todaysMemories.YearGroups.Count);

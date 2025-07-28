@@ -10,7 +10,7 @@ from pathlib import Path
 # Add parent directory to path to import screenshots module
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from screenshots import ScreenshotDetector, detect_screenshot, detect_screenshot_detailed
+from screenshots import ScreenshotDetector, detect_screenshot
 
 
 class TestScreenshotDetector(unittest.TestCase):
@@ -103,12 +103,10 @@ class TestScreenshotDetector(unittest.TestCase):
             pass
         
         try:
-            result = detect_screenshot_detailed(fake_screenshot_path)
-            self.assertIsInstance(result, dict)
-            self.assertIn("is_screenshot", result)
-            self.assertIn("confidence", result)
-            self.assertIn("file_path", result)
-            self.assertIn("analysis", result)
+            is_screenshot, confidence, details = detect_screenshot(fake_screenshot_path)
+            self.assertIsInstance(is_screenshot, bool)
+            self.assertIsInstance(confidence, float)
+            self.assertIsInstance(details, dict)
         except:
             # Expected to fail due to non-existent file
             pass
@@ -178,6 +176,42 @@ class TestScreenshotDetector(unittest.TestCase):
         self.assertLess(confidence, 0.5, f"High confidence for regular photo: {confidence}")
         self.assertIsInstance(details, dict)
         print(f"Photo analysis: {details}")
+    
+    @unittest.skipUnless(
+        os.path.exists(Path(__file__).parent / "images" / "screenshot1.png"),
+        "screenshot1.png test image not found"
+    )
+    def test_screenshot1_png(self):
+        """Test with screenshot1.png from C# tests."""
+        test_path = self.test_images_dir / "screenshot1.png"
+        is_screenshot, confidence, details = self.detector.detect_screenshot(str(test_path))
+        
+        print(f"\nscreenshot1.png analysis:")
+        print(f"  Is Screenshot: {is_screenshot}")
+        print(f"  Confidence: {confidence}")
+        print(f"  Details: {details}")
+        
+        self.assertTrue(is_screenshot, f"Failed to detect screenshot1.png: confidence={confidence}")
+        self.assertGreater(confidence, 0.5, f"Low confidence for screenshot1.png: {confidence}")
+    
+    @unittest.skipUnless(
+        os.path.exists(Path(__file__).parent / "images" / "something.png"),
+        "something.png test image not found"
+    )
+    def test_something_png(self):
+        """Test with something.png from C# tests - should be detected as screenshot."""
+        test_path = self.test_images_dir / "something.png"
+        is_screenshot, confidence, details = self.detector.detect_screenshot(str(test_path))
+        
+        print(f"\nsomething.png analysis:")
+        print(f"  Is Screenshot: {is_screenshot}")
+        print(f"  Confidence: {confidence}")
+        print(f"  Details: {details}")
+        
+        # This image SHOULD be detected as a screenshot according to the C# test expectations
+        self.assertTrue(is_screenshot, f"Failed to detect something.png as screenshot: confidence={confidence}")
+        # Accept lower confidence for images without filename indicators
+        self.assertGreater(confidence, 0.35, f"Too low confidence for something.png: {confidence}")
     
     def test_screenshot_patterns_comprehensive(self):
         """Test comprehensive list of screenshot filename patterns."""

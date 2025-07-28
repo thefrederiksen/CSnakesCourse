@@ -1,0 +1,348 @@
+@using FaceVault.Models
+@using FaceVault.Services
+@using System.Globalization
+@inject IScreenshotDetectionService ScreenshotDetectionService
+@inject IScreenshotDatabaseService ScreenshotDatabaseService
+@inject ILogger<ImagePropertiesDialog> Logger
+
+@if (IsVisible && Image != null)
+{
+    <div class="modal-backdrop fade show" @onclick="Close"></div>
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Image Properties</h5>
+                    <button type="button" class="btn-close" @onclick="Close" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <!-- Thumbnail preview -->
+                            <img src="@GetImageUrl()" class="img-fluid rounded mb-3" alt="@Image.FileName" style="max-height: 300px;" />
+                        </div>
+                        <div class="col-md-8">
+                            <!-- Properties table -->
+                            <table class="table table-sm">
+                                <tbody>
+                                    <tr class="table-light">
+                                        <th colspan="2">File Information</th>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Name:</strong></td>
+                                        <td>@Image.FileName</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Path:</strong></td>
+                                        <td class="text-break small">@Image.FilePath</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Size:</strong></td>
+                                        <td>@Image.SizeFormatted</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Dimensions:</strong></td>
+                                        <td>@Image.Width × @Image.Height pixels</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Type:</strong></td>
+                                        <td>@Image.FileExtension.ToUpper()</td>
+                                    </tr>
+                                    
+                                    <tr class="table-light">
+                                        <th colspan="2">Screenshot Detection</th>
+                                    </tr>
+                                    <tr class="@(Image.IsScreenshot || Image.ScreenshotStatus == ScreenshotStatus.IsScreenshot ? "table-warning" : "")">
+                                        <td><strong>Is Screenshot (Legacy):</strong></td>
+                                        <td>
+                                            @if (Image.IsScreenshot)
+                                            {
+                                                <span class="badge bg-warning">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-success">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr class="@(Image.ScreenshotStatus == ScreenshotStatus.IsScreenshot ? "table-warning" : "")">
+                                        <td><strong>Screenshot Status:</strong></td>
+                                        <td>
+                                            @switch (Image.ScreenshotStatus)
+                                            {
+                                                case ScreenshotStatus.Unknown:
+                                                    <span class="badge bg-secondary">Unknown</span>
+                                                    break;
+                                                case ScreenshotStatus.NotScreenshot:
+                                                    <span class="badge bg-success">Not Screenshot</span>
+                                                    break;
+                                                case ScreenshotStatus.IsScreenshot:
+                                                    <span class="badge bg-warning">Is Screenshot</span>
+                                                    break;
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Screenshot Confidence:</strong></td>
+                                        <td>@Image.ScreenshotConfidence.ToString("F2")</td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="2" class="text-center">
+                                            <button class="btn btn-sm btn-outline-primary" @onclick="CheckScreenshot" disabled="@isCheckingScreenshot">
+                                                @if (isCheckingScreenshot)
+                                                {
+                                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                                    <text>Checking...</text>
+                                                }
+                                                else
+                                                {
+                                                    <span class="oi oi-magnifying-glass me-2" aria-hidden="true"></span>
+                                                    <text>Check Screenshot Now</text>
+                                                }
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    @if (!string.IsNullOrEmpty(debugInfo))
+                                    {
+                                        <tr>
+                                            <td colspan="2">
+                                                <div class="alert alert-info small mb-0">
+                                                    <strong>Debug Info:</strong>
+                                                    <pre class="mb-0">@debugInfo</pre>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                    
+                                    <tr class="table-light">
+                                        <th colspan="2">Date Information</th>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Date Taken:</strong></td>
+                                        <td>@(Image.DateTaken?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Unknown")</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Date Created:</strong></td>
+                                        <td>@Image.DateCreated.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Date Modified:</strong></td>
+                                        <td>@Image.DateModified.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                    </tr>
+                                    
+                                    @if (!string.IsNullOrEmpty(Image.CameraMake) || !string.IsNullOrEmpty(Image.CameraModel))
+                                    {
+                                        <tr class="table-light">
+                                            <th colspan="2">Camera Information</th>
+                                        </tr>
+                                        @if (!string.IsNullOrEmpty(Image.CameraMake))
+                                        {
+                                            <tr>
+                                                <td><strong>Camera Make:</strong></td>
+                                                <td>@Image.CameraMake</td>
+                                            </tr>
+                                        }
+                                        @if (!string.IsNullOrEmpty(Image.CameraModel))
+                                        {
+                                            <tr>
+                                                <td><strong>Camera Model:</strong></td>
+                                                <td>@Image.CameraModel</td>
+                                            </tr>
+                                        }
+                                    }
+                                    
+                                    @if (Image.HasLocation)
+                                    {
+                                        <tr class="table-light">
+                                            <th colspan="2">Location Information</th>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>GPS Coordinates:</strong></td>
+                                            <td>@Image.Latitude?.ToString("F6"), @Image.Longitude?.ToString("F6")</td>
+                                        </tr>
+                                        @if (!string.IsNullOrEmpty(Image.LocationName))
+                                        {
+                                            <tr>
+                                                <td><strong>Location Name:</strong></td>
+                                                <td>@Image.LocationName</td>
+                                            </tr>
+                                        }
+                                    }
+                                    
+                                    <tr class="table-light">
+                                        <th colspan="2">Processing Status</th>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Processed:</strong></td>
+                                        <td>
+                                            @if (Image.IsProcessed)
+                                            {
+                                                <span class="badge bg-success">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Has Faces:</strong></td>
+                                        <td>
+                                            @if (Image.HasFaces)
+                                            {
+                                                <span class="badge bg-info">Yes</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary">No</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Database ID:</strong></td>
+                                        <td>@Image.Id</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>File Hash:</strong></td>
+                                        <td class="text-break small font-monospace">@Image.FileHash</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="Close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Image? Image { get; set; }
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private bool isCheckingScreenshot = false;
+    private string debugInfo = string.Empty;
+
+    private async Task Close()
+    {
+        debugInfo = string.Empty;
+        await OnClose.InvokeAsync();
+    }
+
+    private string GetImageUrl()
+    {
+        if (Image == null) return "";
+        
+        // Use thumbnail if available, otherwise use full image
+        if (!string.IsNullOrEmpty(Image.ThumbnailPath) && System.IO.File.Exists(Image.ThumbnailPath))
+        {
+            return $"/api/images/thumbnail/{Image.Id}";
+        }
+        
+        return $"/api/images/{Image.Id}";
+    }
+
+    private async Task CheckScreenshot()
+    {
+        if (Image == null || isCheckingScreenshot) return;
+
+        try
+        {
+            isCheckingScreenshot = true;
+            debugInfo = $"Starting screenshot detection for: {Image.FileName}\n";
+            debugInfo += $"File path: {Image.FilePath}\n";
+            debugInfo += $"Current status: {Image.ScreenshotStatus}\n";
+            debugInfo += $"Current confidence: {Image.ScreenshotConfidence:F4}\n\n";
+            StateHasChanged();
+
+            var startTime = DateTime.Now;
+            Logger.LogInformation("Manual screenshot check started for image {ImageId} at {FilePath}", Image.Id, Image.FilePath);
+            
+            // Call the screenshot detection service
+            var result = await ScreenshotDetectionService.DetectScreenshotAsync(Image.FilePath);
+            
+            var elapsed = DateTime.Now - startTime;
+            debugInfo += $"Detection completed in: {elapsed.TotalMilliseconds:F0}ms\n";
+            debugInfo += $"Result: {(result.IsScreenshot ? "IS SCREENSHOT" : "NOT SCREENSHOT")}\n";
+            debugInfo += $"Confidence: {result.Confidence:F4}\n";
+            
+            if (!string.IsNullOrEmpty(result.Error))
+            {
+                debugInfo += $"Error: {result.Error}\n";
+            }
+            
+            if (result.Analysis != null && result.Analysis.Count > 0)
+            {
+                debugInfo += "\nAnalysis Details:\n";
+                foreach (var detail in result.Analysis)
+                {
+                    debugInfo += $"  - {detail.Key}: {detail.Value}\n";
+                }
+            }
+
+            // Check if we should update the database based on the result quality
+            var shouldUpdate = true;
+            var hasAnalysisError = false;
+            
+            // Check for analysis errors in the result
+            if (result.Analysis != null && result.Analysis.ContainsKey("error"))
+            {
+                var errorMsg = result.Analysis["error"]?.ToString() ?? "";
+                if (errorMsg.Contains("Image analysis libraries not available") || 
+                    errorMsg.Contains("file not found"))
+                {
+                    hasAnalysisError = true;
+                    shouldUpdate = false;
+                    debugInfo += $"\n⚠️ WARNING: Analysis was incomplete due to missing libraries!\n";
+                    debugInfo += $"The result may be based on filename only and is unreliable.\n";
+                }
+            }
+            
+            // Only update if we have a reliable result
+            if (shouldUpdate && string.IsNullOrEmpty(result.Error))
+            {
+                var newStatus = result.IsScreenshot ? ScreenshotStatus.IsScreenshot : ScreenshotStatus.NotScreenshot;
+                await ScreenshotDatabaseService.UpdateImageScreenshotStatusAsync(Image.Id, newStatus, result.Confidence);
+                
+                debugInfo += $"\nDatabase updated:\n";
+                debugInfo += $"New status: {newStatus}\n";
+                
+                // Update the local image object to reflect the changes
+                Image.ScreenshotStatus = newStatus;
+                Image.IsScreenshot = result.IsScreenshot;
+                Image.ScreenshotConfidence = result.Confidence;
+            }
+            else
+            {
+                debugInfo += $"\n❌ DATABASE NOT UPDATED due to unreliable analysis\n";
+                debugInfo += $"Status remains: {Image.ScreenshotStatus}\n";
+                
+                if (hasAnalysisError)
+                {
+                    debugInfo += $"\nTo fix this issue:\n";
+                    debugInfo += $"1. Ensure Python PIL (Pillow) is installed\n";
+                    debugInfo += $"2. Ensure NumPy is installed\n";
+                    debugInfo += $"3. Run: pip install Pillow numpy\n";
+                }
+            }
+            
+            Logger.LogInformation("Manual screenshot check completed for image {ImageId}. Result: {IsScreenshot}, Confidence: {Confidence}", 
+                Image.Id, result.IsScreenshot, result.Confidence);
+        }
+        catch (Exception ex)
+        {
+            debugInfo += $"\nERROR: {ex.Message}\n";
+            debugInfo += $"Stack trace:\n{ex.StackTrace}";
+            Logger.LogError(ex, "Error during manual screenshot check for image {ImageId}", Image?.Id);
+        }
+        finally
+        {
+            isCheckingScreenshot = false;
+            StateHasChanged();
+        }
+    }
+}

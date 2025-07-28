@@ -28,20 +28,8 @@ public class HelloWorldTests
             builder.Logging.AddConsole();
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
             
-            // Get the base directory of the test output
+            // Python files are now automatically copied via project file configuration
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            
-            // Copy the Python file from HelloWorld project output
-            var pythonFile = Path.Combine(baseDir, "hello.py");
-            if (!File.Exists(pythonFile))
-            {
-                var sourceFile = Path.Combine(baseDir, "..", "..", "..", "..", "HelloWorld", "hello.py");
-                if (File.Exists(sourceFile))
-                {
-                    File.Copy(sourceFile, pythonFile, true);
-                    Console.WriteLine($"Copied hello.py to test directory");
-                }
-            }
             
             builder.Services
                 .WithPython()

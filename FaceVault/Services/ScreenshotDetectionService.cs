@@ -16,7 +16,24 @@ public class ScreenshotDetectionService : IScreenshotDetectionService
         try
         {
             dynamic libCheck = _pythonEnv.Screenshots().CheckLibraries();
-            _logger.LogInformation("Python library check: {Result}", (string)(libCheck?.ToString() ?? "null"));
+            var libCheckResult = libCheck?.ToString() ?? "null";
+            _logger.LogInformation("Python library check: {Result}", (string)libCheckResult);
+            
+            // Parse the library check result if it's a dictionary string
+            if (libCheckResult.Contains("has_pil"))
+            {
+                var hasLibs = libCheckResult.Contains("'has_pil': True");
+                if (!hasLibs)
+                {
+                    _logger.LogWarning("⚠️ PIL is NOT available!");
+                    _logger.LogWarning("Screenshot detection will use filename-only analysis.");
+                    _logger.LogWarning("To fix: Run 'pip install Pillow' in the Python environment.");
+                }
+                else
+                {
+                    _logger.LogInformation("✓ PIL is available for metadata checking.");
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -29,7 +46,10 @@ public class ScreenshotDetectionService : IScreenshotDetectionService
         object? result = null;
         try
         {
-            _logger.LogDebug("Analyzing screenshot for: {FilePath}", filePath);
+            _logger.LogInformation("Analyzing screenshot for: {FilePath}", filePath);
+            _logger.LogInformation("File exists: {Exists}, Size: {Size}", 
+                File.Exists(filePath), 
+                File.Exists(filePath) ? new FileInfo(filePath).Length : 0);
 
             // Call Python screenshot detection method
             result = await Task.Run(() =>
@@ -37,7 +57,7 @@ public class ScreenshotDetectionService : IScreenshotDetectionService
                 return _pythonEnv.Screenshots().DetectScreenshot(filePath);
             });
             
-            _logger.LogDebug("Python result type: {Type}, Value: {Value}", result?.GetType()?.Name ?? "null", result?.ToString() ?? "null");
+            _logger.LogInformation("Python result type: {Type}, Value: {Value}", result?.GetType()?.Name ?? "null", result?.ToString() ?? "null");
 
             // Extract results from Python tuple (is_screenshot, confidence, details)
             // CSnakes returns a ValueTuple<bool, double, IReadOnlyDictionary<string, PyObject>>

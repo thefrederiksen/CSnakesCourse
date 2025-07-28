@@ -40,7 +40,11 @@ public class MemoryService : IMemoryService
             // Add screenshot filter if requested
             if (excludeScreenshots)
             {
-                query = query.Where(img => !img.IsScreenshot);
+                // Filter by both the legacy IsScreenshot field AND the new ScreenshotStatus enum
+                // Also exclude Unknown status images since we don't know if they're screenshots yet
+                query = query.Where(img => !img.IsScreenshot && 
+                                         img.ScreenshotStatus != ScreenshotStatus.IsScreenshot &&
+                                         img.ScreenshotStatus != ScreenshotStatus.Unknown);
             }
             
             var photos = await query

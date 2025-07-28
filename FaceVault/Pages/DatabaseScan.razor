@@ -916,6 +916,16 @@
                 Logger.LogInformation("Post-scan count report: {CountReport}", countReport);
                 
                 await RefreshStats(); // Update statistics after successful scan
+                
+                // Check if screenshot filtering is enabled and if we have new images to scan
+                var appSettings = await SettingsService.GetSettingsAsync();
+                if (appSettings.EnableScreenshotFiltering && scanResult.NewImagesCount > 0)
+                {
+                    Logger.LogInformation("Automatically starting screenshot detection for {NewImagesCount} new images", scanResult.NewImagesCount);
+                    
+                    // Start screenshot detection for new images only
+                    await StartNewScreenshotScan();
+                }
             }
             else if (scanResult.IsCancelled)
             {
@@ -998,6 +1008,17 @@
     private async Task ConfirmFullScreenshotScan()
     {
         showFullScanWarning = false;
+        StateHasChanged();
+        
+        // Give visual feedback that reset is happening
+        if (screenshotStats != null)
+        {
+            screenshotStats.ScreenshotCount = 0;
+            screenshotStats.PhotoCount = 0;
+            screenshotStats.UnknownCount = screenshotStats.TotalImages;
+        }
+        StateHasChanged();
+        
         await StartFullScreenshotScan();
     }
 
@@ -1014,6 +1035,15 @@
             screenshotScanResult = null;
             screenshotProgress = null;
             screenshotCancellationTokenSource = new CancellationTokenSource();
+            
+            // Reset the screenshot statistics to show that we're starting fresh
+            if (screenshotStats != null)
+            {
+                screenshotStats.ScreenshotCount = 0;
+                screenshotStats.PhotoCount = 0;
+                screenshotStats.UnknownCount = screenshotStats.TotalImages; // All will be unknown after reset
+            }
+            
             StateHasChanged();
 
             Logger.LogInformation("Starting full screenshot detection scan (with reset)");

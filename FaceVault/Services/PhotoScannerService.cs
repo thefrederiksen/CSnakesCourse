@@ -141,7 +141,11 @@ public class PhotoScannerService : IPhotoScannerService
                             CameraMake = metadata.CameraMake,
                             CameraModel = metadata.CameraModel,
                             IsProcessed = false,
-                            IsDeleted = false
+                            IsDeleted = false,
+                            // Initialize screenshot detection fields
+                            ScreenshotStatus = ScreenshotStatus.Unknown,
+                            IsScreenshot = false,
+                            ScreenshotConfidence = 0.0
                         };
 
                         _context.Images.Add(image);

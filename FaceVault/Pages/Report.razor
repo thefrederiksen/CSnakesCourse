@@ -242,22 +242,7 @@
                                             <div class="row">
                                                 @foreach (var image in group.Images.Take(3))
                                                 {
-                                                    <div class="col-md-4">
-                                                        <div class="card">
-                                                            <FaceVault.Components.ImageThumbnail Photo="image" />
-                                                            <div class="card-body p-2">
-                                                                <small>
-                                                                    <strong>@image.FileName</strong><br>
-                                                                    📅 @image.DateCreated.ToString("MMM dd, yyyy")<br>
-                                                                    💾 @image.SizeFormatted
-                                                                    <a href="#" @onclick="() => OpenImage(image.FilePath)" 
-                                                                       @onclick:preventDefault="true" class="btn btn-outline-primary btn-sm mt-1">
-                                                                        <span class="oi oi-eye" aria-hidden="true"></span> View
-                                                                    </a>
-                                                                </small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    <FaceVault.Components.ImageViewer Photo="image" ShowTime="false" />
                                                 }
                                             </div>
                                         </div>
@@ -317,22 +302,7 @@
                                 <div class="row">
                                     @foreach (var screenshot in report.Screenshots.SampleScreenshots)
                                     {
-                                        <div class="col-md-4 mb-3">
-                                            <div class="card">
-                                                <FaceVault.Components.ImageThumbnail Photo="screenshot" />
-                                                <div class="card-body p-2">
-                                                    <small>
-                                                        <strong>@screenshot.FileName</strong><br>
-                                                        📅 @screenshot.DateCreated.ToString("MMM dd, yyyy")<br>
-                                                        💾 @screenshot.SizeFormatted
-                                                        <a href="#" @onclick="() => OpenImage(screenshot.FilePath)" 
-                                                           @onclick:preventDefault="true" class="btn btn-outline-primary btn-sm mt-1">
-                                                            <span class="oi oi-eye" aria-hidden="true"></span> View
-                                                        </a>
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <FaceVault.Components.ImageViewer Photo="screenshot" ShowTime="false" />
                                     }
                                 </div>
                             }

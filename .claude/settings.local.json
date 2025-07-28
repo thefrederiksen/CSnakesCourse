@@ -15,7 +15,9 @@
       "Bash(powershell:*)",
       "Bash(mkdir:*)",
       "Bash(del HelloWorld.TestsUnitTest1.cs)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(ls:*)",
+      "Bash(dotnet clean:*)"
     ],
     "deny": []
   }

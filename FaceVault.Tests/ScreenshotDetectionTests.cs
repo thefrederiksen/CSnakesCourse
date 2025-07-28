@@ -107,6 +107,12 @@ public sealed class ScreenshotDetectionTests
 
                 Console.WriteLine($"  Result: {(result.IsScreenshot ? "SCREENSHOT" : "NOT SCREENSHOT")} " +
                                 $"(Confidence: {result.Confidence:F2})");
+                                
+                // Debug: Show error if present
+                if (!string.IsNullOrEmpty(result.Error))
+                {
+                    Console.WriteLine($"  Error: {result.Error}");
+                }
             }
             catch (Exception ex)
             {
@@ -131,6 +137,68 @@ public sealed class ScreenshotDetectionTests
             "No detection should have errors");
     }
 
+    [TestMethod]
+    [Timeout(60000)] // 60 second timeout
+    public async Task NonScreenshots_AreNotDetected()
+    {
+        // Arrange
+        var nonScreenshotsDirectory = Path.Combine(_testImagesDirectory, "non-screenshots");
+        
+        if (!Directory.Exists(nonScreenshotsDirectory))
+        {
+            Assert.Inconclusive($"Non-screenshots test directory not found: {nonScreenshotsDirectory}");
+            return;
+        }
+        
+        var nonScreenshotFiles = Directory.GetFiles(nonScreenshotsDirectory, "*.*", SearchOption.TopDirectoryOnly)
+            .Where(file => IsImageFile(file))
+            .ToArray();
+            
+        if (nonScreenshotFiles.Length == 0)
+        {
+            Assert.Inconclusive("No non-screenshot test images found");
+            return;
+        }
+        
+        Console.WriteLine($"Testing {nonScreenshotFiles.Length} non-screenshot files...");
+        var incorrectDetections = new List<string>();
+        
+        // Act
+        foreach (var file in nonScreenshotFiles)
+        {
+            var fileName = Path.GetFileName(file);
+            Console.WriteLine($"Testing: {fileName}");
+            
+            try
+            {
+                var result = await _screenshotService!.DetectScreenshotAsync(file);
+                
+                if (result.IsScreenshot)
+                {
+                    incorrectDetections.Add($"{fileName} - Incorrectly detected as screenshot (Confidence: {result.Confidence:F2})");
+                }
+                
+                Console.WriteLine($"  Result: {(result.IsScreenshot ? "SCREENSHOT" : "NOT SCREENSHOT")} " +
+                                $"(Confidence: {result.Confidence:F2})");
+                                
+                // Debug: Show error if present
+                if (!string.IsNullOrEmpty(result.Error))
+                {
+                    Console.WriteLine($"  Error: {result.Error}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  ERROR: {ex.Message}");
+            }
+        }
+        
+        // Assert
+        Assert.AreEqual(0, incorrectDetections.Count,
+            $"The following {incorrectDetections.Count} files were incorrectly detected as screenshots:\n" +
+            string.Join("\n", incorrectDetections));
+    }
+    
     [TestMethod]
     [Timeout(60000)] // 60 second timeout
     public async Task IsScreenshotAsync_AllScreenshots_ReturnsTrue()

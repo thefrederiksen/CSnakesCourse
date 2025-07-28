@@ -154,16 +154,43 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
                     }
                     else if (detectionResult != null)
                     {
-                        // Update both new and legacy fields
-                        var newStatus = detectionResult.IsScreenshot ? ScreenshotStatus.IsScreenshot : ScreenshotStatus.NotScreenshot;
-                        image.ScreenshotStatus = newStatus;
-                        image.IsScreenshot = detectionResult.IsScreenshot; // Keep for backward compatibility
-                        image.ScreenshotConfidence = detectionResult.Confidence;
+                        // Check if the analysis was reliable
+                        bool hasAnalysisError = false;
+                        if (detectionResult.Analysis != null && detectionResult.Analysis.ContainsKey("error"))
+                        {
+                            var errorMsg = detectionResult.Analysis["error"]?.ToString() ?? "";
+                            if (errorMsg.Contains("Image analysis libraries not available") || 
+                                errorMsg.Contains("file not found"))
+                            {
+                                hasAnalysisError = true;
+                                _logger.LogWarning("Unreliable screenshot detection for {FilePath}: {Error}", 
+                                    image.FilePath, errorMsg);
+                            }
+                        }
                         
-                        if (detectionResult.IsScreenshot)
-                            result.ScreenshotsFound++;
+                        // Only update if we have a reliable result
+                        if (!hasAnalysisError && string.IsNullOrEmpty(detectionResult.Error))
+                        {
+                            // Update both new and legacy fields
+                            var newStatus = detectionResult.IsScreenshot ? ScreenshotStatus.IsScreenshot : ScreenshotStatus.NotScreenshot;
+                            image.ScreenshotStatus = newStatus;
+                            image.IsScreenshot = detectionResult.IsScreenshot; // Keep for backward compatibility
+                            image.ScreenshotConfidence = detectionResult.Confidence;
+                            
+                            if (detectionResult.IsScreenshot)
+                                result.ScreenshotsFound++;
+                            else
+                                result.PhotosFound++;
+                        }
                         else
-                            result.PhotosFound++;
+                        {
+                            // Keep as Unknown if analysis was unreliable
+                            image.ScreenshotStatus = ScreenshotStatus.Unknown;
+                            image.IsScreenshot = false;
+                            image.ScreenshotConfidence = 0.0;
+                            result.ErrorCount++;
+                            result.Errors.Add($"{image.FileName}: Unreliable analysis - missing image libraries");
+                        }
                     }
 
                     result.ProcessedImages++;

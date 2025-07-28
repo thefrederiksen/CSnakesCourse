@@ -2,6 +2,7 @@ using FaceVault.Services;
 using CSnakes.Runtime;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using CSnakes.Runtime.PackageManagement;
 
 namespace FaceVault.Tests;
 
@@ -42,6 +43,7 @@ public sealed class SimpleScreenshotTests
                 builder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning); // Reduce logging noise
             });
 
+            // Python files are now automatically linked from FaceVault via project file
             var testBinDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             var pythonHome = Path.Join(testBinDir, "Python");
             
@@ -55,6 +57,30 @@ public sealed class SimpleScreenshotTests
             services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionService>();
 
             _serviceProvider = services.BuildServiceProvider();
+            
+            // Initialize Python environment
+            Console.WriteLine("Initializing Python environment...");
+            var pythonEnv = _serviceProvider.GetRequiredService<IPythonEnvironment>();
+            Console.WriteLine("Python environment created successfully");
+            
+            // For tests, ensure minimal packages are installed
+            try
+            {
+                dynamic result = pythonEnv.Screenshots().CheckLibraries();
+                var libCheckResult = result?.ToString() ?? "null";
+                Console.WriteLine($"Library check result: {libCheckResult}");
+                
+                if (libCheckResult.Contains("'has_image_libs': False"))
+                {
+                    Console.WriteLine("Warning: Python image libraries not available for testing");
+                    Console.WriteLine("Tests will use filename-based detection only");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not check Python libraries: {ex.Message}");
+            }
+            
             _screenshotService = _serviceProvider.GetRequiredService<IScreenshotDetectionService>();
             
             var endTime = DateTime.Now;
@@ -131,8 +157,35 @@ public sealed class SimpleScreenshotTests
                 {
                     Console.WriteLine($"✗ NOT detected as screenshot (confidence: {result.Confidence:F2})");
                     failedFiles.Add($"{fileName} - Confidence: {result.Confidence:F2}");
+                    
+                    // Print debug info for failed detections
+                    if (result.Analysis != null && result.Analysis.Count > 0)
+                    {
+                        Console.WriteLine("  Analysis details:");
+                        foreach (var kvp in result.Analysis.Take(5))
+                        {
+                            Console.WriteLine($"    - {kvp.Key}: {kvp.Value}");
+                        }
+                    }
+                    if (!string.IsNullOrEmpty(result.Error))
+                    {
+                        Console.WriteLine($"  Error: {result.Error}");
+                    }
                 }
                 
+                // Check if image libraries are available
+                if (result.Analysis != null && result.Analysis.ContainsKey("error"))
+                {
+                    var error = result.Analysis["error"]?.ToString() ?? "";
+                    if (error.Contains("Image analysis libraries not available"))
+                    {
+                        Assert.Fail($"Image analysis libraries (PIL/numpy) are not available! " +
+                                   $"These are REQUIRED for screenshot detection. " +
+                                   $"Error: {error}");
+                    }
+                }
+                
+                // ALL images in the screenshots directory MUST be detected as screenshots
                 Assert.IsTrue(result.IsScreenshot, 
                     $"File '{fileName}' should be detected as a screenshot. " +
                     $"Confidence: {result.Confidence:F2}, Error: {result.Error ?? "None"}");

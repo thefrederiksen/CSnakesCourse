@@ -121,16 +121,8 @@
                                 <div class="card-header bg-success text-white text-center py-2">
                                     <strong><span class="oi oi-circle-check" aria-hidden="true"></span> ✅ KEEP THIS ONE</strong>
                                 </div>
-                                <FaceVault.Components.ImageThumbnail Photo="keepImage" />
-                                <div class="card-body p-2">
-                                    <div class="small">
-                                        <strong>@keepImage.FileName</strong><br>
-                                        📅 @(keepImage.DateTaken?.ToString("MMM dd, yyyy") ?? keepImage.DateCreated.ToString("MMM dd, yyyy"))<br>
-                                        💾 @keepImage.SizeFormatted
-                                    </div>
-                                    <button class="btn btn-outline-primary btn-sm mt-2" @onclick="() => OpenImage(keepImage.FilePath)">
-                                        <span class="oi oi-eye" aria-hidden="true"></span> View
-                                    </button>
+                                <div class="card-body p-0">
+                                    <FaceVault.Components.ImageViewer Photo="keepImage" ShowTime="false" />
                                 </div>
                             </div>
                         </div>
@@ -145,20 +137,7 @@
                                     <div class="row">
                                         @foreach (var deleteImage in deleteImages.Take(3))
                                         {
-                                            <div class="col-md-4 mb-2">
-                                                <div class="card border-secondary">
-                                                    <FaceVault.Components.ImageThumbnail Photo="deleteImage" />
-                                                    <div class="card-body p-1">
-                                                        <div class="small">
-                                                            <strong>@deleteImage.FileName</strong><br>
-                                                            💾 @deleteImage.SizeFormatted
-                                                        </div>
-                                                        <button class="btn btn-outline-primary btn-sm mt-1" @onclick="() => OpenImage(deleteImage.FilePath)">
-                                                            <span class="oi oi-eye" aria-hidden="true"></span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            <FaceVault.Components.ImageViewer Photo="deleteImage" ShowTime="false" />
                                         }
                                         @if (deleteImages.Count > 3)
                                         {

@@ -50,6 +50,11 @@
                                     <span class="oi oi-folder-open me-2" aria-hidden="true"></span>
                                     Open Location
                                 </button>
+                                <hr class="dropdown-divider my-1" />
+                                <button class="custom-dropdown-item" @onclick="HandleShowProperties" @onclick:stopPropagation="true">
+                                    <span class="oi oi-info me-2" aria-hidden="true"></span>
+                                    Properties
+                                </button>
                             </div>
                         }
                     </div>
@@ -59,12 +64,16 @@
     </div>
 </div>
 
+<!-- Image Properties Dialog -->
+<ImagePropertiesDialog Image="@Photo" IsVisible="@showPropertiesDialog" OnClose="ClosePropertiesDialog" />
+
 @code {
     [Parameter] public Models.Image Photo { get; set; } = default!;
     [Parameter] public bool ShowTime { get; set; } = true;
     [Parameter] public EventCallback<Models.Image> OnImageClick { get; set; }
     
     private bool isDropdownOpen = false;
+    private bool showPropertiesDialog = false;
 
     private void OpenImage()
     {
@@ -153,6 +162,25 @@
     private void CloseDropdown()
     {
         isDropdownOpen = false;
+        StateHasChanged();
+    }
+
+    private void HandleShowProperties()
+    {
+        try
+        {
+            showPropertiesDialog = true;
+            StateHasChanged();
+        }
+        finally
+        {
+            CloseDropdown();
+        }
+    }
+
+    private void ClosePropertiesDialog()
+    {
+        showPropertiesDialog = false;
         StateHasChanged();
     }
 }

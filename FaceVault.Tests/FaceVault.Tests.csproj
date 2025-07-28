@@ -27,6 +27,11 @@
     <Content Include="Images\**\*.*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <!-- Link all files from FaceVault Python directory -->
+    <Content Include="..\FaceVault\Python\**\*.*" 
+             Link="Python\%(RecursiveDir)%(Filename)%(Extension)">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
