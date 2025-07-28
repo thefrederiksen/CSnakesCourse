@@ -182,7 +182,7 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
             {
                 TotalImages = g.Count(),
                 ScreenshotCount = g.Count(img => img.IsScreenshot),
-                PhotoCount = g.Count(img => !img.IsScreenshot && img.ScreenshotConfidence > 0.0),
+                PhotoCount = g.Count(img => !img.IsScreenshot),
                 UnprocessedCount = g.Count(img => img.ScreenshotConfidence == 0.0)
             })
             .FirstOrDefaultAsync();
