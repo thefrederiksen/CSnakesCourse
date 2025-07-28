@@ -1,6 +1,7 @@
 @page "/database-scan"
 @using FaceVault.Services
 @using FaceVault.Data
+@using FaceVault.Models
 @using Microsoft.EntityFrameworkCore
 @inject IPhotoScannerService PhotoScannerService
 @inject IFastPhotoScannerService FastPhotoScannerService
@@ -8,10 +9,14 @@
 @inject IDatabaseStatsService DatabaseStatsService
 @inject IDatabaseSyncService DatabaseSyncService
 @inject IScreenshotDatabaseService ScreenshotDatabaseService
+@inject IDuplicateDetectionService DuplicateDetectionService
 @inject NavigationManager Navigation
+@inject ILogger<DatabaseScan> Logger
 @implements IDisposable
 
 <PageTitle>Database Scan - FaceVault</PageTitle>
+
+<FaceVault.Components.ErrorBoundary PageName="Database Scan">
 
 <div class="container-fluid">
     <div class="row mb-4">
@@ -248,8 +253,8 @@
                                 <small>Screenshots</small>
                             </div>
                             <div class="col-md-3">
-                                <h5 class="text-info">@screenshotStats.UnprocessedCount</h5>
-                                <small>Unprocessed</small>
+                                <h5 class="text-info">@screenshotStats.UnknownCount</h5>
+                                <small>Unknown</small>
                             </div>
                         </div>
 
@@ -265,8 +270,8 @@
                                     Screenshots: @(screenshotStats.ScreenshotCount)
                                 </div>
                                 <div class="progress-bar bg-light text-dark" role="progressbar" 
-                                     style="width: @((double)screenshotStats.UnprocessedCount / screenshotStats.TotalImages * 100)%">
-                                    Unprocessed: @(screenshotStats.UnprocessedCount)
+                                     style="width: @((double)screenshotStats.UnknownCount / screenshotStats.TotalImages * 100)%">
+                                    Unknown: @(screenshotStats.UnknownCount)
                                 </div>
                             </div>
                         }
@@ -360,15 +365,193 @@
                                     <span class="oi oi-media-stop" aria-hidden="true"></span> Cancel
                                 </button>
                             }
-                            <button class="btn btn-warning" @onclick="StartScreenshotDetection" 
-                                    disabled="@(isScreenshotScanning || isScanning)">
-                                @if (isScreenshotScanning)
+                            else
+                            {
+                                @if (screenshotStats != null && screenshotStats.UnknownCount > 0)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <button class="btn btn-success me-2" @onclick="StartNewScreenshotScan" 
+                                            disabled="@(isScreenshotScanning || isScanning)">
+                                        <span class="oi oi-plus" aria-hidden="true"></span> 
+                                        Scan New Screenshots (@screenshotStats.UnknownCount)
+                                    </button>
                                 }
-                                <span class="oi oi-camera-slr" aria-hidden="true"></span> 
-                                Detect All Screenshots
-                            </button>
+                                <button class="btn btn-warning" @onclick="ShowFullScanWarning" 
+                                        disabled="@(isScreenshotScanning || isScanning)">
+                                    <span class="oi oi-reload" aria-hidden="true"></span> 
+                                    Full Screenshot Scan
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duplicate Detection Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <span class="oi oi-file" aria-hidden="true"></span> Duplicate Detection
+                    </h5>
+                </div>
+                <div class="card-body">
+                    @if (duplicateStats != null)
+                    {
+                        <div class="row text-center mb-3">
+                            <div class="col-md-2">
+                                <h5 class="text-primary">@duplicateStats.TotalImages</h5>
+                                <small>Total Images</small>
+                            </div>
+                            <div class="col-md-2">
+                                <h5 class="text-success">@duplicateStats.ImagesWithHashes</h5>
+                                <small>With Hashes</small>
+                            </div>
+                            <div class="col-md-2">
+                                <h5 class="text-warning">@duplicateStats.ImagesWithoutHashes</h5>
+                                <small>Missing Hashes</small>
+                            </div>
+                            <div class="col-md-2">
+                                <h5 class="text-info">@duplicateStats.UniqueImages</h5>
+                                <small>Unique</small>
+                            </div>
+                            <div class="col-md-2">
+                                <h5 class="text-danger">@duplicateStats.DuplicateImages</h5>
+                                <small>Duplicates</small>
+                            </div>
+                            <div class="col-md-2">
+                                <h5 class="text-secondary">@duplicateStats.TotalDuplicateSizeFormatted</h5>
+                                <small>Wasted Space</small>
+                            </div>
+                        </div>
+
+                        @if (duplicateStats.TotalImages > 0)
+                        {
+                            <div class="progress mb-3" style="height: 20px;">
+                                <div class="progress-bar bg-success" role="progressbar" 
+                                     style="width: @((double)duplicateStats.UniqueImages / duplicateStats.TotalImages * 100)%"
+                                     title="Unique Images">
+                                    @(duplicateStats.UniqueImages)
+                                </div>
+                                <div class="progress-bar bg-warning" role="progressbar" 
+                                     style="width: @((double)duplicateStats.ImagesWithoutHashes / duplicateStats.TotalImages * 100)%"
+                                     title="Missing Hashes">
+                                    @(duplicateStats.ImagesWithoutHashes)
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" 
+                                     style="width: @((double)duplicateStats.DuplicateImages / duplicateStats.TotalImages * 100)%"
+                                     title="Duplicate Images">
+                                    @(duplicateStats.DuplicateImages)
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @if (isDuplicateScanning && duplicateProgress != null)
+                    {
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Hash Calculation Progress</span>
+                                <span>@duplicateProgress.ProcessedImages / @duplicateProgress.TotalImages</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 24px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                     style="width: @(duplicateProgress.ProgressPercentage)%" 
+                                     aria-valuenow="@(duplicateProgress.ProgressPercentage)" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    @(duplicateProgress.ProgressPercentage.ToString("F1"))%
+                                </div>
+                            </div>
+                            
+                            <div class="row text-center">
+                                <div class="col-md-3">
+                                    <small class="text-muted">Processing:</small><br>
+                                    <span class="small text-truncate d-block">@duplicateProgress.CurrentFileDisplay</span>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Hashes Calculated:</small><br>
+                                    <strong class="text-success">@duplicateProgress.ImagesWithHashes</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Duplicates Found:</small><br>
+                                    <strong class="text-warning">@duplicateProgress.DuplicatesFound</strong>
+                                </div>
+                                <div class="col-md-3">
+                                    <small class="text-muted">Progress:</small><br>
+                                    <strong>@(duplicateProgress.ProgressPercentage.ToString("F1"))%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (duplicateScanResult != null && !isDuplicateScanning)
+                    {
+                        <div class="alert alert-@(duplicateScanResult.WasCancelled ? "warning" : "success")" role="alert">
+                            <h6 class="alert-heading">
+                                @if (duplicateScanResult.WasCancelled)
+                                {
+                                    <span class="oi oi-warning" aria-hidden="true"></span><text> Duplicate Detection Cancelled</text>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-check" aria-hidden="true"></span><text> Duplicate Detection Completed</text>
+                                }
+                            </h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong class="text-primary">@duplicateScanResult.TotalImages</strong><br>
+                                    <small>Total Images</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-success">@duplicateScanResult.HashesCalculated</strong><br>
+                                    <small>Hashes Calculated</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-warning">@duplicateScanResult.DuplicatesFound</strong><br>
+                                    <small>Duplicates Found</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong class="text-danger">@duplicateScanResult.ErrorCount</strong><br>
+                                    <small>Errors</small>
+                                </div>
+                            </div>
+                            <hr>
+                            <p class="mb-0">
+                                Duration: <strong>@(duplicateScanResult.Duration.ToString(@"mm\:ss"))</strong> | 
+                                Processing Speed: <strong>@((duplicateScanResult.Duration.TotalSeconds > 0 ? duplicateScanResult.ProcessedImages / duplicateScanResult.Duration.TotalSeconds : 0).ToString("F1"))</strong> images/sec
+                            </p>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-info" @onclick="RefreshDuplicateStats">
+                            <span class="oi oi-reload" aria-hidden="true"></span> Refresh Stats
+                        </button>
+                        <div>
+                            @if (isDuplicateScanning)
+                            {
+                                <button class="btn btn-outline-danger me-2" @onclick="CancelDuplicateScan">
+                                    <span class="oi oi-media-stop" aria-hidden="true"></span> Cancel
+                                </button>
+                            }
+                            else if (duplicateStats != null && duplicateStats.ImagesWithoutHashes > 0)
+                            {
+                                <button class="btn btn-primary me-2" @onclick="StartDuplicateDetection" 
+                                        disabled="@(isDuplicateScanning || isScanning || isScreenshotScanning)">
+                                    @if (isDuplicateScanning)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <span class="oi oi-file" aria-hidden="true"></span> 
+                                    Calculate Missing Hashes
+                                </button>
+                            }
+                            @if (duplicateStats != null && duplicateStats.DuplicateGroups > 0)
+                            {
+                                <button class="btn btn-outline-warning" @onclick="ViewDuplicates">
+                                    <span class="oi oi-eye" aria-hidden="true"></span> 
+                                    View @duplicateStats.DuplicateGroups Duplicate Groups
+                                </button>
+                            }
                         </div>
                     </div>
                 </div>
@@ -454,6 +637,54 @@
                 </div>
             </div>
 
+            <!-- Tags Display -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><span class="oi oi-tags" aria-hidden="true"></span> Generated Tags</h5>
+                    <button class="btn btn-outline-info btn-sm" @onclick="RefreshTags">
+                        <span class="oi oi-reload" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <div class="card-body">
+                    @if (allTags != null && allTags.Any())
+                    {
+                        <div class="row">
+                            @foreach (var tag in allTags.Take(10))
+                            {
+                                <div class="col-12 mb-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="badge bg-primary">@tag.TagName</span>
+                                        <small class="text-muted">@tag.ImageCount images</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        @if (allTags.Count > 10)
+                        {
+                            <hr>
+                            <small class="text-muted">Showing top 10 of @allTags.Count total tags</small>
+                        }
+                    }
+                    else if (allTags != null)
+                    {
+                        <div class="text-center text-muted">
+                            <span class="oi oi-info" aria-hidden="true"></span>
+                            <div>No tags found</div>
+                            <small>Tags are generated during face detection</small>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm text-muted" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <div class="small text-muted mt-2">Loading tags...</div>
+                        </div>
+                    }
+                </div>
+            </div>
+
             <!-- Help Information -->
             <div class="card">
                 <div class="card-header">
@@ -472,11 +703,12 @@
                     
                     <h6 class="mt-3">Screenshot Detection:</h6>
                     <ul class="small">
-                        <li>Analyzes all images in the database</li>
-                        <li>Uses AI algorithms to detect screenshots</li>
+                        <li><strong>Full Scan:</strong> Resets all statuses and re-analyzes everything</li>
+                        <li><strong>New Scan:</strong> Only processes images with Unknown status</li>
+                        <li>Uses AI algorithms to detect screenshots vs photos</li>
                         <li>Checks filename patterns, EXIF data, dimensions</li>
-                        <li>Updates IsScreenshot flag for all images</li>
-                        <li>Processes ALL images regardless of previous scans</li>
+                        <li>Three states: Unknown, IsScreenshot, NotScreenshot</li>
+                        <li>Differential scanning for better performance</li>
                     </ul>
                     
                     <h6 class="mt-3">Performance Tips:</h6>
@@ -492,6 +724,48 @@
         </div>
     </div>
 </div>
+
+</FaceVault.Components.ErrorBoundary>
+
+<!-- Full Screenshot Scan Warning Modal -->
+@if (showFullScanWarning)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <span class="oi oi-warning text-warning" aria-hidden="true"></span>
+                        Full Screenshot Scan Warning
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="HideFullScanWarning"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning" role="alert">
+                        <strong>Warning:</strong> This will reset ALL screenshot detection results to "Unknown" status before scanning.
+                    </div>
+                    <p>This action will:</p>
+                    <ul>
+                        <li>Reset all @(screenshotStats?.TotalImages ?? 0) images to Unknown status</li>
+                        <li>Clear all previous screenshot detection results</li>
+                        <li>Re-analyze every image in your database</li>
+                        <li>Take significantly longer than the differential scan</li>
+                    </ul>
+                    <p><strong>Are you sure you want to proceed?</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideFullScanWarning">
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-warning" @onclick="ConfirmFullScreenshotScan">
+                        <span class="oi oi-warning" aria-hidden="true"></span>
+                        Yes, Reset and Scan All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private string scanDirectory = "";
@@ -520,6 +794,17 @@
     private ScreenshotScanResult? screenshotScanResult;
     private ScreenshotStatistics? screenshotStats;
     private CancellationTokenSource? screenshotCancellationTokenSource;
+    private bool showFullScanWarning = false;
+    
+    // Tags
+    private List<TagInfo>? allTags;
+    
+    // Duplicate detection
+    private bool isDuplicateScanning = false;
+    private DuplicateScanProgress? duplicateProgress;
+    private DuplicateScanResult? duplicateScanResult;
+    private DuplicateStatistics? duplicateStats;
+    private CancellationTokenSource? duplicateCancellationTokenSource;
 
     protected override async Task OnInitializedAsync()
     {
@@ -544,10 +829,12 @@
             // Load database statistics
             await RefreshStats();
             await RefreshScreenshotStats();
+            await RefreshTags();
+            await RefreshDuplicateStats();
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error loading initial data: {ex.Message}");
+            Logger.LogError(ex, "Error loading initial data: {Message}", ex.Message);
         }
     }
 
@@ -564,7 +851,7 @@
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error refreshing statistics: {ex.Message}");
+            Logger.LogError(ex, "Error refreshing statistics: {Message}", ex.Message);
         }
     }
 
@@ -573,7 +860,7 @@
     {
         if (string.IsNullOrEmpty(scanDirectory) || !Directory.Exists(scanDirectory))
         {
-            Logger.Warning("Invalid scan directory specified");
+            Logger.LogWarning("Invalid scan directory specified");
             return;
         }
 
@@ -586,7 +873,7 @@
             scanStartTime = DateTime.UtcNow;
             StateHasChanged();
 
-            Logger.Info($"Starting database scan of directory: {scanDirectory}");
+            Logger.LogInformation("Starting database scan of directory: {ScanDirectory}", scanDirectory);
 
             var progress = new Progress<ScanProgress>(async progress =>
             {
@@ -618,7 +905,7 @@
 
             if (scanResult.IsSuccess)
             {
-                Logger.Info($"Database scan completed successfully: {scanResult.NewImagesCount} new images added");
+                Logger.LogInformation("Database scan completed successfully: {NewImagesCount} new images added", scanResult.NewImagesCount);
                 
                 // Validate data consistency and sync stats
                 await DatabaseSyncService.ValidateDataConsistencyAsync();
@@ -626,22 +913,22 @@
                 
                 // Generate detailed count report for debugging
                 var countReport = await DatabaseSyncService.GetDetailedCountReportAsync();
-                Logger.Info($"Post-scan count report: {countReport}");
+                Logger.LogInformation("Post-scan count report: {CountReport}", countReport);
                 
                 await RefreshStats(); // Update statistics after successful scan
             }
             else if (scanResult.IsCancelled)
             {
-                Logger.Info("Database scan was cancelled by user");
+                Logger.LogInformation("Database scan was cancelled by user");
             }
             else
             {
-                Logger.Error($"Database scan failed: {scanResult.Error}");
+                Logger.LogError("Database scan failed: {Error}", scanResult.Error);
             }
         }
         catch (Exception ex)
         {
-            Logger.Error($"Database scan failed: {ex.Message}");
+            Logger.LogError(ex, "Database scan failed: {Message}", ex.Message);
             scanResult = new ScanResult
             {
                 DirectoryPath = scanDirectory,
@@ -675,7 +962,7 @@
     private void CancelScan()
     {
         cancellationTokenSource?.Cancel();
-        Logger.Info("Database scan cancellation requested");
+        Logger.LogInformation("Database scan cancellation requested");
     }
 
     private void GoBack()
@@ -692,11 +979,29 @@
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error refreshing screenshot statistics: {ex.Message}");
+            Logger.LogError(ex, "Error refreshing screenshot statistics: {Message}", ex.Message);
         }
     }
 
-    private async Task StartScreenshotDetection()
+    private void ShowFullScanWarning()
+    {
+        showFullScanWarning = true;
+        StateHasChanged();
+    }
+
+    private void HideFullScanWarning()
+    {
+        showFullScanWarning = false;
+        StateHasChanged();
+    }
+
+    private async Task ConfirmFullScreenshotScan()
+    {
+        showFullScanWarning = false;
+        await StartFullScreenshotScan();
+    }
+
+    private async Task StartFullScreenshotScan()
     {
         if (isScreenshotScanning || isScanning)
         {
@@ -711,7 +1016,7 @@
             screenshotCancellationTokenSource = new CancellationTokenSource();
             StateHasChanged();
 
-            Logger.Info("Starting screenshot detection scan");
+            Logger.LogInformation("Starting full screenshot detection scan (with reset)");
 
             var progress = new Progress<ScreenshotScanProgress>(async progress =>
             {
@@ -719,23 +1024,85 @@
                 await InvokeAsync(StateHasChanged);
             });
 
-            screenshotScanResult = await ScreenshotDatabaseService.ScanAllImagesAsync(
+            screenshotScanResult = await ScreenshotDatabaseService.FullScreenshotScanAsync(
                 progress,
                 screenshotCancellationTokenSource.Token);
 
             if (screenshotScanResult.WasCancelled)
             {
-                Logger.Info("Screenshot detection scan was cancelled by user");
+                Logger.LogInformation("Full screenshot detection scan was cancelled by user");
             }
             else
             {
-                Logger.Info($"Screenshot detection scan completed: {screenshotScanResult.ScreenshotsFound} screenshots found out of {screenshotScanResult.TotalImages} images");
+                Logger.LogInformation("Full screenshot detection scan completed: {ScreenshotsFound} screenshots found out of {TotalImages} images", screenshotScanResult.ScreenshotsFound, screenshotScanResult.TotalImages);
                 await RefreshScreenshotStats(); // Update statistics after successful scan
             }
         }
         catch (Exception ex)
         {
-            Logger.Error($"Screenshot detection scan failed: {ex.Message}");
+            Logger.LogError(ex, "Full screenshot detection scan failed: {Message}", ex.Message);
+            screenshotScanResult = new ScreenshotScanResult
+            {
+                TotalImages = screenshotStats?.TotalImages ?? 0,
+                ErrorCount = 1,
+                WasCancelled = false,
+                Duration = TimeSpan.Zero
+            };
+            screenshotScanResult.Errors.Add(ex.Message);
+        }
+        finally
+        {
+            isScreenshotScanning = false;
+            screenshotCancellationTokenSource?.Dispose();
+            screenshotCancellationTokenSource = null;
+            await InvokeAsync(StateHasChanged);
+            
+            // Ensure UI is fully updated
+            await Task.Delay(100);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StartNewScreenshotScan()
+    {
+        if (isScreenshotScanning || isScanning)
+        {
+            return;
+        }
+
+        try
+        {
+            isScreenshotScanning = true;
+            screenshotScanResult = null;
+            screenshotProgress = null;
+            screenshotCancellationTokenSource = new CancellationTokenSource();
+            StateHasChanged();
+
+            Logger.LogInformation("Starting new screenshot detection scan (unknown images only)");
+
+            var progress = new Progress<ScreenshotScanProgress>(async progress =>
+            {
+                screenshotProgress = progress;
+                await InvokeAsync(StateHasChanged);
+            });
+
+            screenshotScanResult = await ScreenshotDatabaseService.ScanNewScreenshotsAsync(
+                progress,
+                screenshotCancellationTokenSource.Token);
+
+            if (screenshotScanResult.WasCancelled)
+            {
+                Logger.LogInformation("New screenshot detection scan was cancelled by user");
+            }
+            else
+            {
+                Logger.LogInformation("New screenshot detection scan completed: {ScreenshotsFound} screenshots found out of {TotalImages} images", screenshotScanResult.ScreenshotsFound, screenshotScanResult.TotalImages);
+                await RefreshScreenshotStats(); // Update statistics after successful scan
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "New screenshot detection scan failed: {Message}", ex.Message);
             screenshotScanResult = new ScreenshotScanResult
             {
                 TotalImages = screenshotStats?.TotalImages ?? 0,
@@ -761,7 +1128,106 @@
     private void CancelScreenshotScan()
     {
         screenshotCancellationTokenSource?.Cancel();
-        Logger.Info("Screenshot detection scan cancellation requested");
+        Logger.LogInformation("Screenshot detection scan cancellation requested");
+    }
+
+    private async Task RefreshTags()
+    {
+        try
+        {
+            allTags = await DatabaseStatsService.GetAllTagsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing tags: {Message}", ex.Message);
+        }
+    }
+
+    private async Task RefreshDuplicateStats()
+    {
+        try
+        {
+            duplicateStats = await DuplicateDetectionService.GetDuplicateStatisticsAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing duplicate statistics: {Message}", ex.Message);
+        }
+    }
+
+    private async Task StartDuplicateDetection()
+    {
+        if (isDuplicateScanning || isScanning || isScreenshotScanning)
+        {
+            return;
+        }
+
+        try
+        {
+            isDuplicateScanning = true;
+            duplicateScanResult = null;
+            duplicateProgress = null;
+            duplicateCancellationTokenSource = new CancellationTokenSource();
+            StateHasChanged();
+
+            Logger.LogInformation("Starting duplicate detection scan");
+
+            var progress = new Progress<DuplicateScanProgress>(async progress =>
+            {
+                duplicateProgress = progress;
+                await InvokeAsync(StateHasChanged);
+            });
+
+            duplicateScanResult = await DuplicateDetectionService.ScanForDuplicatesAsync(
+                progress,
+                duplicateCancellationTokenSource.Token);
+
+            if (duplicateScanResult.WasCancelled)
+            {
+                Logger.LogInformation("Duplicate detection scan was cancelled by user");
+            }
+            else
+            {
+                Logger.LogInformation("Duplicate detection scan completed: {HashesCalculated} hashes calculated, {DuplicatesFound} duplicates found out of {TotalImages} images", duplicateScanResult.HashesCalculated, duplicateScanResult.DuplicatesFound, duplicateScanResult.TotalImages);
+                await RefreshDuplicateStats(); // Update statistics after successful scan
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Duplicate detection scan failed: {Message}", ex.Message);
+            duplicateScanResult = new DuplicateScanResult
+            {
+                TotalImages = duplicateStats?.TotalImages ?? 0,
+                ErrorCount = 1,
+                WasCancelled = false,
+                Duration = TimeSpan.Zero
+            };
+            duplicateScanResult.Errors.Add(ex.Message);
+        }
+        finally
+        {
+            isDuplicateScanning = false;
+            duplicateCancellationTokenSource?.Dispose();
+            duplicateCancellationTokenSource = null;
+            await InvokeAsync(StateHasChanged);
+            
+            // Ensure UI is fully updated
+            await Task.Delay(100);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void CancelDuplicateScan()
+    {
+        duplicateCancellationTokenSource?.Cancel();
+        Logger.LogInformation("Duplicate detection scan cancellation requested");
+    }
+
+    private void ViewDuplicates()
+    {
+        Navigation.NavigateTo("/duplicates");
     }
 
     public void Dispose()
@@ -770,5 +1236,7 @@
         cancellationTokenSource?.Dispose();
         screenshotCancellationTokenSource?.Cancel();
         screenshotCancellationTokenSource?.Dispose();
+        duplicateCancellationTokenSource?.Cancel();
+        duplicateCancellationTokenSource?.Dispose();
     }
 }

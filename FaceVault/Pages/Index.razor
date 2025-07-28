@@ -4,6 +4,8 @@
 
 <PageTitle>@GetPageTitle()</PageTitle>
 
+<FaceVault.Components.ErrorBoundary PageName="Home">
+
 <div class="container-fluid py-3">
     <!-- Header with Date Navigation -->
     <div class="row mb-4">
@@ -17,31 +19,21 @@
                     <p class="text-muted mb-0">@GetSubtitle()</p>
                 </div>
                 
-                <!-- Date Navigation and Filters -->
-                <div class="d-flex gap-2">
-                    <div class="btn-group" role="group">
-                        <button class="btn btn-outline-secondary" @onclick="LoadPreviousDay" title="Previous day">
-                            <span class="oi oi-chevron-left" aria-hidden="true"></span>
-                        </button>
-                        <button class="btn btn-outline-primary" @onclick="LoadToday" title="Today">
-                            <span class="oi oi-home" aria-hidden="true"></span>
-                            Today
-                        </button>
-                        <button class="btn btn-outline-secondary" @onclick="LoadNextDay" 
-                                disabled="@(currentDate >= DateTime.Today)" title="Next day">
-                            <span class="oi oi-chevron-right" aria-hidden="true"></span>
-                        </button>
-                        <button class="btn btn-outline-secondary" @onclick="RefreshMemories" title="Refresh">
-                            <span class="oi oi-reload" aria-hidden="true"></span>
-                        </button>
-                    </div>
-                    
-                    <!-- Screenshot Filter -->
-                    <button class="btn @(excludeScreenshots ? "btn-success" : "btn-outline-secondary")" 
-                            @onclick="ToggleScreenshotFilter" 
-                            title="@(excludeScreenshots ? "Showing only real photos (screenshots excluded)" : "Showing all photos including screenshots")">
-                        <span class="oi oi-camera-slr" aria-hidden="true"></span>
-                        @(excludeScreenshots ? "Photos Only" : "Include Screenshots")
+                <!-- Date Navigation -->
+                <div class="btn-group" role="group">
+                    <button class="btn btn-outline-secondary" @onclick="LoadPreviousDay" title="Previous day">
+                        <span class="oi oi-chevron-left" aria-hidden="true"></span>
+                    </button>
+                    <button class="btn btn-outline-primary" @onclick="LoadToday" title="Today">
+                        <span class="oi oi-home" aria-hidden="true"></span>
+                        Today
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="LoadNextDay" 
+                            disabled="@(currentDate >= DateTime.Today)" title="Next day">
+                        <span class="oi oi-chevron-right" aria-hidden="true"></span>
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="RefreshMemories" title="Refresh">
+                        <span class="oi oi-reload" aria-hidden="true"></span>
                     </button>
                 </div>
             </div>
@@ -128,23 +120,7 @@
                         <div class="row g-2">
                             @foreach (var photo in yearGroup.Photos.Take(12)) // Limit to 12 photos per year for performance
                             {
-                                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                                    <div class="card border-0 shadow-sm photo-card" @onclick="() => OpenImage(photo)">
-                                        <div class="photo-container position-relative">
-                                            <ImageThumbnail Photo="photo" />
-                                            
-                                            <!-- Photo overlay with info -->
-                                            <div class="photo-overlay">
-                                                <div class="d-flex flex-column align-items-center justify-content-center h-100">
-                                                    <span class="oi oi-external-link mb-1" aria-hidden="true"></span>
-                                                    <small class="text-white">
-                                                        @photo.DateTaken?.ToString("HH:mm")
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <FaceVault.Components.ImageViewer Photo="photo" ShowTime="true" />
                             }
                             
                             @if (yearGroup.PhotoCount > 12)
@@ -168,55 +144,14 @@
     }
 </div>
 
+</FaceVault.Components.ErrorBoundary>
+
 <style>
-    .photo-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        cursor: pointer;
-    }
-
-    .photo-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
-    }
-
-    .photo-container {
-        aspect-ratio: 1;
-        overflow: hidden;
-        border-radius: 0.375rem;
-    }
-
-    .photo-thumbnail {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.3s ease;
-    }
-
-    .photo-card:hover .photo-thumbnail {
-        transform: scale(1.05);
-    }
-
     .photo-placeholder {
         width: 100%;
         height: 100%;
         background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         border-radius: 0.375rem;
-    }
-
-    .photo-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-        color: white;
-        padding: 0.5rem;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-    }
-
-    .photo-card:hover .photo-overlay {
-        opacity: 1;
     }
 
     .btn-group .btn {

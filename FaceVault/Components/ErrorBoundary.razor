@@ -1,0 +1,99 @@
+@inherits ErrorBoundaryBase
+@using Microsoft.AspNetCore.Components.Web
+
+@if (CurrentException != null)
+{
+    <ErrorDialog IsVisible="true"
+                 FriendlyMessage="@GetFriendlyMessage()"
+                 ErrorMessage="@CurrentException.Message"
+                 ErrorType="@CurrentException.GetType().Name"
+                 StackTrace="@GetStackTrace()"
+                 PageName="@PageName"
+                 Timestamp="@DateTime.Now"
+                 OnClose="@HandleErrorClose"
+                 OnRetry="@HandleRetry" />
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public string PageName { get; set; } = "Unknown Page";
+    [Parameter] public string? RetryAction { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    private string GetFriendlyMessage()
+    {
+        if (CurrentException == null) return "An unexpected error occurred.";
+
+        return CurrentException switch
+        {
+            TimeoutException => "The operation took too long to complete. Please try again.",
+            UnauthorizedAccessException => "You don't have permission to perform this action.",
+            FileNotFoundException => "A required file could not be found.",
+            DirectoryNotFoundException => "A required folder could not be found.",
+            OutOfMemoryException => "The system is running low on memory. Please close some applications and try again.",
+            ArgumentNullException => "Required information is missing. Please check your input and try again.",
+            ArgumentException => "Invalid information was provided. Please check your input and try again.",
+            InvalidOperationException => "This operation cannot be performed right now. Please try again later.",
+            NotSupportedException => "This operation is not supported.",
+            System.Data.Common.DbException => "There was a problem accessing the database. Please try again.",
+            HttpRequestException => "There was a problem connecting to the service. Please check your internet connection.",
+            TaskCanceledException => "The operation was cancelled or timed out. Please try again.",
+            _ => "An unexpected error occurred. Please try again or contact support if the problem persists."
+        };
+    }
+
+    private string GetStackTrace()
+    {
+        if (CurrentException == null) return string.Empty;
+        
+        // Include inner exceptions in the stack trace
+        var fullTrace = CurrentException.ToString();
+        
+        // Limit stack trace length for display
+        if (fullTrace.Length > 5000)
+        {
+            fullTrace = fullTrace.Substring(0, 5000) + "\n\n[Stack trace truncated for display]";
+        }
+        
+        return fullTrace;
+    }
+
+    private Task HandleErrorClose()
+    {
+        // Reset the error boundary to allow the component to render normally
+        Recover();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleRetry()
+    {
+        if (OnRetry.HasDelegate)
+        {
+            // Reset the error boundary first
+            Recover();
+            StateHasChanged();
+            
+            // Then execute the retry callback
+            await OnRetry.InvokeAsync();
+        }
+        else
+        {
+            // Default retry behavior - just reset the error boundary
+            Recover();
+            StateHasChanged();
+        }
+    }
+
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        // Log the error for debugging
+        Console.WriteLine($"Error boundary caught exception in {PageName}: {exception}");
+        
+        // Return completed task since base is abstract
+        return Task.CompletedTask;
+    }
+}

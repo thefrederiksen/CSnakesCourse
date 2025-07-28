@@ -6,7 +6,13 @@
       "Bash(move Form1.cs MainForm.cs)",
       "Bash(ren:*)",
       "Bash(rm:*)",
-      "Bash(dotnet sln:*)"
+      "Bash(dotnet sln:*)",
+      "Bash(move:*)",
+      "Bash(mv:*)",
+      "Bash(dotnet test:*)",
+      "Bash(find:*)",
+      "Bash(cp:*)",
+      "Bash(powershell:*)"
     ],
     "deny": []
   }

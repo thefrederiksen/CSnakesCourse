@@ -11,6 +11,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="MSTest" Version="3.6.4" />
+    <PackageReference Include="CSnakes.Runtime" Version="1.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +21,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FaceVault\FaceVault.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\**\*.*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

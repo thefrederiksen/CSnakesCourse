@@ -3,7 +3,17 @@ namespace FaceVault.Services;
 public interface IScreenshotDatabaseService
 {
     /// <summary>
-    /// Analyze all images in the database for screenshots and update their classification
+    /// Full screenshot scan: Reset all images to Unknown status and scan everything
+    /// </summary>
+    Task<ScreenshotScanResult> FullScreenshotScanAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Differential scan: Only analyze images with Unknown status
+    /// </summary>
+    Task<ScreenshotScanResult> ScanNewScreenshotsAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default);
+    
+    /// <summary>
+    /// Analyze all images in the database for screenshots and update their classification (legacy method)
     /// </summary>
     Task<ScreenshotScanResult> ScanAllImagesAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default);
     
@@ -13,6 +23,16 @@ public interface IScreenshotDatabaseService
     Task<ScreenshotScanResult> ScanImagesAsync(IEnumerable<int> imageIds, IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default);
     
     /// <summary>
+    /// Reset all images to Unknown screenshot status
+    /// </summary>
+    Task<int> ResetAllScreenshotStatusAsync();
+    
+    /// <summary>
+    /// Get count of images by screenshot status
+    /// </summary>
+    Task<int> GetUnprocessedImageCountAsync();
+    
+    /// <summary>
     /// Get screenshot statistics from the database
     /// </summary>
     Task<ScreenshotStatistics> GetScreenshotStatisticsAsync();
@@ -20,12 +40,12 @@ public interface IScreenshotDatabaseService
     /// <summary>
     /// Get images filtered by screenshot status
     /// </summary>
-    Task<List<Models.Image>> GetImagesByScreenshotStatusAsync(bool isScreenshot, int skip = 0, int take = 50);
+    Task<List<Models.Image>> GetImagesByScreenshotStatusAsync(Models.ScreenshotStatus status, int skip = 0, int take = 50);
     
     /// <summary>
     /// Update screenshot classification for a specific image
     /// </summary>
-    Task UpdateImageScreenshotStatusAsync(int imageId, bool isScreenshot, double confidence);
+    Task UpdateImageScreenshotStatusAsync(int imageId, Models.ScreenshotStatus status, double confidence);
 }
 
 public class ScreenshotScanResult
@@ -55,7 +75,8 @@ public class ScreenshotStatistics
     public int TotalImages { get; set; }
     public int ScreenshotCount { get; set; }
     public int PhotoCount { get; set; }
-    public int UnprocessedCount { get; set; }
+    public int UnknownCount { get; set; }
     public double ScreenshotPercentage => TotalImages > 0 ? (double)ScreenshotCount / TotalImages * 100 : 0;
+    public double ProcessedPercentage => TotalImages > 0 ? (double)(ScreenshotCount + PhotoCount) / TotalImages * 100 : 0;
     public DateTime? LastScanDate { get; set; }
 }

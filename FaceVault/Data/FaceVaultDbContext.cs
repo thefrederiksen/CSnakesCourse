@@ -34,6 +34,7 @@ public class FaceVaultDbContext : DbContext
             entity.HasIndex(e => e.IsProcessed);
             entity.HasIndex(e => e.HasFaces);
             entity.HasIndex(e => e.IsScreenshot);
+            entity.HasIndex(e => e.ScreenshotStatus);
 
             // Configure relationships
             entity.HasMany(e => e.Faces)

@@ -1,10 +1,13 @@
 @using FaceVault.Services
 @inject IImageService ImageService
+@inject IImageOrientationService OrientationService
+@inject ILogger<ImageThumbnail> Logger
 
 @if (!string.IsNullOrEmpty(imageDataUrl))
 {
     <img src="@imageDataUrl" 
-         class="card-img-top photo-thumbnail" 
+         class="@CssClass" 
+         style="@GetImageStyle()"
          alt="@Photo.FileName"
          title="@GetPhotoTooltip()"
          loading="lazy" />
@@ -12,7 +15,8 @@
 else if (!string.IsNullOrEmpty(fallbackImageUrl))
 {
     <img src="@fallbackImageUrl" 
-         class="card-img-top photo-thumbnail" 
+         class="@CssClass" 
+         style="@GetImageStyle()"
          alt="@Photo.FileName"
          title="@GetPhotoTooltip()"
          loading="lazy" />
@@ -46,21 +50,27 @@ else
 
 @code {
     [Parameter] public Models.Image Photo { get; set; } = default!;
+    [Parameter] public int Size { get; set; } = 250;
+    [Parameter] public string CssClass { get; set; } = "card-img-top photo-thumbnail";
     
     private string imageDataUrl = string.Empty;
     private string fallbackImageUrl = string.Empty;
     private bool isLoading = true;
+    private string orientationTransform = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             // Try to load thumbnail first
-            imageDataUrl = await ImageService.GetImageDataUrlAsync(Photo.FilePath, 250);
+            imageDataUrl = await ImageService.GetImageDataUrlAsync(Photo.FilePath, Size);
+            
+            // Get orientation transform for proper rotation
+            orientationTransform = await OrientationService.GetOrientationTransformAsync(Photo.FilePath);
         }
         catch (Exception ex)
         {
-            Logger.Warning($"Error loading thumbnail for {Photo.FilePath}: {ex.Message}");
+            Logger.LogWarning(ex, "Error loading thumbnail for {FilePath}: {Message}", Photo.FilePath, ex.Message);
             
             // Try to use direct file URL as fallback
             try
@@ -69,7 +79,7 @@ else
             }
             catch (Exception fallbackEx)
             {
-                Logger.Error($"Error setting fallback URL for {Photo.FilePath}: {fallbackEx.Message}");
+                Logger.LogError(fallbackEx, "Error setting fallback URL for {FilePath}: {Message}", Photo.FilePath, fallbackEx.Message);
             }
         }
         finally
@@ -102,5 +112,14 @@ else
             tooltip += $"\nHEIC format - Click to open in default viewer";
         }
         return tooltip;
+    }
+
+    private string GetImageStyle()
+    {
+        if (!string.IsNullOrEmpty(orientationTransform))
+        {
+            return $"transform: {orientationTransform}; transform-origin: center;";
+        }
+        return string.Empty;
     }
 }

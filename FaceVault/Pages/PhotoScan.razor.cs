@@ -1,10 +1,15 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
 using FaceVault.Services;
 
 namespace FaceVault.Pages;
 
 public partial class PhotoScan : ComponentBase, IDisposable
 {
+    [Inject] protected IFastPhotoScannerService PhotoScannerService { get; set; } = default!;
+    [Inject] protected ISettingsService SettingsService { get; set; } = default!;
+    [Inject] protected NavigationManager Navigation { get; set; } = default!;
+    [Inject] protected ILogger<PhotoScan> Logger { get; set; } = default!;
 
     private string scanDirectory = "";
     private bool includeSubdirectories = true;
@@ -38,7 +43,7 @@ public partial class PhotoScan : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error loading scanner settings: {ex.Message}");
+            Logger.LogError(ex, "Error loading scanner settings: {Message}", ex.Message);
         }
     }
 
@@ -57,8 +62,8 @@ public partial class PhotoScan : ComponentBase, IDisposable
             // Force immediate UI update to show scanning state
             await InvokeAsync(StateHasChanged);
 
-            Logger.Info($"Starting full scan of directory: {scanDirectory}");
-            Logger.Info("Reducing logging verbosity during scan for better performance...");
+            Logger.LogInformation("Starting full scan of directory: {ScanDirectory}", scanDirectory);
+            Logger.LogInformation("Reducing logging verbosity during scan for better performance...");
 
             var lastUpdateTime = DateTime.Now;
             var updateInterval = TimeSpan.FromMilliseconds(250); // Update UI every 250ms minimum
@@ -101,20 +106,20 @@ public partial class PhotoScan : ComponentBase, IDisposable
             
             if (scanResult.IsSuccess)
             {
-                Logger.Info($"Full scan completed successfully: {scanResult.NewImagesCount} new images added, {scanResult.SkippedCount} skipped");
+                Logger.LogInformation("Full scan completed successfully: {NewImagesCount} new images added, {SkippedCount} skipped", scanResult.NewImagesCount, scanResult.SkippedCount);
             }
             else if (scanResult.IsCancelled)
             {
-                Logger.Info("Scan was cancelled by user");
+                Logger.LogInformation("Scan was cancelled by user");
             }
             else
             {
-                Logger.Error($"Scan failed: {scanResult.Error}");
+                Logger.LogError("Scan failed: {Error}", scanResult.Error);
             }
         }
         catch (Exception ex)
         {
-            Logger.Error($"Full scan failed: {ex.Message}");
+            Logger.LogError(ex, "Full scan failed: {Message}", ex.Message);
             scanResult = new ScanResult
             {
                 DirectoryPath = scanDirectory,
@@ -135,7 +140,7 @@ public partial class PhotoScan : ComponentBase, IDisposable
     private void CancelScan()
     {
         cancellationTokenSource?.Cancel();
-        Logger.Info("Scan cancellation requested");
+        Logger.LogInformation("Scan cancellation requested");
     }
 
     private void GoBack()

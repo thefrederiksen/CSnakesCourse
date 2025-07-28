@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using FaceVault.Data;
 using FaceVault.Services;
@@ -13,6 +14,7 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
     [Inject] protected IDatabaseStatsService DatabaseStatsService { get; set; } = default!;
     [Inject] protected IDatabaseSyncService DatabaseSyncService { get; set; } = default!;
     [Inject] protected IJSRuntime JSRuntime { get; set; } = default!;
+    [Inject] protected ILogger<DatabaseStatus> Logger { get; set; } = default!;
 
     private bool isLoading = true;
     private bool canConnect = false;
@@ -66,7 +68,7 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
                 // Check migrations
                 await CheckMigrations();
                 
-                Logger.Debug($"DatabaseStatus: Refresh completed - Images count: {tableCounts.GetValueOrDefault("Images", 0)}");
+                Logger.LogDebug("DatabaseStatus: Refresh completed - Images count: {ImageCount}", tableCounts.GetValueOrDefault("Images", 0));
             }
         }
         catch (Exception ex)
@@ -75,10 +77,10 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
             canConnect = false;
             
             // Log detailed error information
-            Logger.Error($"Database Status page connection error: {ex.Message}");
-            Logger.Error($"Exception Type: {ex.GetType().Name}");
-            Logger.Error($"Exception Details: {ex}");
-            Logger.Error($"Inner Exception: {ex.InnerException?.Message ?? "None"}");
+            Logger.LogError(ex, "Database Status page connection error: {Message}", ex.Message);
+            Logger.LogError("Exception Type: {ExceptionType}", ex.GetType().Name);
+            Logger.LogError("Exception Details: {Exception}", ex);
+            Logger.LogError("Inner Exception: {InnerException}", ex.InnerException?.Message ?? "None");
         }
         finally
         {
@@ -105,9 +107,9 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
             connectionError = $"{ex.GetType().Name}: {ex.Message}";
             
             // Log detailed connection test error
-            Logger.Error($"Database connection test failed: {ex.Message}");
-            Logger.Error($"Exception Type: {ex.GetType().Name}");
-            Logger.Error($"Inner Exception: {ex.InnerException?.Message ?? "None"}");
+            Logger.LogError(ex, "Database connection test failed: {Message}", ex.Message);
+            Logger.LogError("Exception Type: {ExceptionType}", ex.GetType().Name);
+            Logger.LogError("Inner Exception: {InnerException}", ex.InnerException?.Message ?? "None");
             
             return false;
         }
@@ -144,7 +146,7 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
         try
         {
             // Always get fresh counts directly from database - no caching
-            Logger.Debug("DatabaseStatus: Getting fresh counts directly from database...");
+            Logger.LogDebug("DatabaseStatus: Getting fresh counts directly from database...");
             
             // Clear any tracked entities to ensure fresh data
             DbContext.ChangeTracker.Clear();
@@ -161,7 +163,7 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
             var totalSettings = await DbContext.AppSettings.AsNoTracking().CountAsync();
             
             // Log the actual counts
-            Logger.Debug($"DatabaseStatus: Direct database counts - Images: {totalImages}, People: {totalPeople}, Faces: {totalFaces}");
+            Logger.LogDebug("DatabaseStatus: Direct database counts - Images: {TotalImages}, People: {TotalPeople}, Faces: {TotalFaces}", totalImages, totalPeople, totalFaces);
             
             // Calculate derived counts
             var unprocessedImages = totalImages - processedImages;
@@ -410,7 +412,7 @@ public partial class DatabaseStatus : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Logger.Error($"Error getting current image count: {ex.Message}");
+            Logger.LogError(ex, "Error getting current image count: {Message}", ex.Message);
             return 0;
         }
     }

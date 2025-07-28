@@ -1,0 +1,167 @@
+@if (IsVisible)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <span class="oi oi-warning me-2" aria-hidden="true"></span>
+                        ⚠️ Something went wrong
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <h6>💔 We're sorry, but an error occurred</h6>
+                        <p class="mb-0">@FriendlyMessage</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <button class="btn btn-outline-secondary btn-sm" @onclick="ToggleDetails">
+                            <span class="oi oi-@(showDetails ? "chevron-top" : "chevron-bottom") me-1" aria-hidden="true"></span>
+                            @(showDetails ? "Hide" : "Show") Technical Details
+                        </button>
+                    </div>
+
+                    @if (showDetails)
+                    {
+                        <div class="border rounded p-3 bg-light">
+                            <div class="d-flex justify-content-between mb-2">
+                                <h6 class="text-danger">🔧 Technical Details</h6>
+                                <button class="btn btn-outline-primary btn-sm" @onclick="CopyToClipboard">
+                                    <span class="oi oi-clipboard me-1" aria-hidden="true"></span>
+                                    📋 Copy Error
+                                </button>
+                            </div>
+                            <div class="mb-2">
+                                <strong>Error Type:</strong> @ErrorType
+                            </div>
+                            <div class="mb-2">
+                                <strong>Message:</strong>
+                                <pre class="bg-white p-2 border rounded mt-1"><code>@ErrorMessage</code></pre>
+                            </div>
+                            @if (!string.IsNullOrEmpty(StackTrace))
+                            {
+                                <div class="mb-2">
+                                    <strong>Stack Trace:</strong>
+                                    <pre class="bg-white p-2 border rounded mt-1 small"><code>@StackTrace</code></pre>
+                                </div>
+                            }
+                            <div class="text-muted small">
+                                <strong>Time:</strong> @Timestamp.ToString("yyyy-MM-dd HH:mm:ss")<br>
+                                <strong>Page:</strong> @PageName
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <div class="alert alert-info">
+                                <h6>🤝 Help us improve FaceVault</h6>
+                                <p class="mb-2">You can help by copying the error details above and sharing them with a developer or pasting them into Claude/ChatGPT for assistance.</p>
+                                <small class="text-muted">
+                                    The technical details contain information about what went wrong and can help identify the cause of the problem.
+                                </small>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="Close">
+                        <span class="oi oi-check me-1" aria-hidden="true"></span>
+                        OK, I understand
+                    </button>
+                    @if (!string.IsNullOrEmpty(RetryAction))
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="Retry">
+                            <span class="oi oi-reload me-1" aria-hidden="true"></span>
+                            Try Again
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string FriendlyMessage { get; set; } = "An unexpected error occurred. Please try again.";
+    [Parameter] public string ErrorMessage { get; set; } = string.Empty;
+    [Parameter] public string ErrorType { get; set; } = string.Empty;
+    [Parameter] public string StackTrace { get; set; } = string.Empty;
+    [Parameter] public string PageName { get; set; } = string.Empty;
+    [Parameter] public string RetryAction { get; set; } = string.Empty;
+    [Parameter] public DateTime Timestamp { get; set; } = DateTime.Now;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    private bool showDetails = false;
+
+    private void ToggleDetails()
+    {
+        showDetails = !showDetails;
+    }
+
+    private async Task Close()
+    {
+        IsVisible = false;
+        await OnClose.InvokeAsync();
+    }
+
+    private async Task Retry()
+    {
+        await OnRetry.InvokeAsync();
+    }
+
+    private async Task CopyToClipboard()
+    {
+        var errorDetails = $@"FaceVault Error Report
+=====================
+Time: {Timestamp:yyyy-MM-dd HH:mm:ss}
+Page: {PageName}
+Error Type: {ErrorType}
+
+Message:
+{ErrorMessage}
+
+Stack Trace:
+{StackTrace}
+
+Friendly Message:
+{FriendlyMessage}";
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", errorDetails);
+            await JSRuntime.InvokeVoidAsync("alert", "✅ Error details copied to clipboard!");
+        }
+        catch
+        {
+            // Fallback - show a modal with the text to copy manually
+            await JSRuntime.InvokeVoidAsync("prompt", "Copy this error report:", errorDetails);
+        }
+    }
+}
+
+@inject IJSRuntime JSRuntime
+
+<style>
+    .modal.show {
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    
+    @@keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .modal-content {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+</style>

@@ -22,9 +22,58 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
         _logger = logger;
     }
 
+    public async Task<ScreenshotScanResult> FullScreenshotScanAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting full screenshot scan - resetting all image statuses to Unknown");
+        
+        // First, reset all image statuses to Unknown
+        var resetCount = await ResetAllScreenshotStatusAsync();
+        _logger.LogInformation("Reset {ResetCount} images to Unknown status", resetCount);
+
+        // Then scan all images
+        var imageIds = await _context.Images
+            .Where(img => !img.IsDeleted && img.FileExists)
+            .Select(img => img.Id)
+            .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("Starting full scan of {TotalImages} images", imageIds.Count);
+        return await ScanImagesAsync(imageIds, progress, cancellationToken);
+    }
+
+    public async Task<ScreenshotScanResult> ScanNewScreenshotsAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Starting differential screenshot scan - only Unknown status images");
+        
+        // Get only images with Unknown status
+        var imageIds = await _context.Images
+            .Where(img => !img.IsDeleted && img.FileExists && img.ScreenshotStatus == ScreenshotStatus.Unknown)
+            .Select(img => img.Id)
+            .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("Starting differential scan of {UnknownImages} unknown images", imageIds.Count);
+        return await ScanImagesAsync(imageIds, progress, cancellationToken);
+    }
+
+    public async Task<int> ResetAllScreenshotStatusAsync()
+    {
+        var affectedRows = await _context.Database.ExecuteSqlRawAsync(
+            "UPDATE Images SET ScreenshotStatus = {0}, IsScreenshot = {1}, ScreenshotConfidence = {2} WHERE IsDeleted = 0 AND FileExists = 1",
+            (int)ScreenshotStatus.Unknown, false, 0.0);
+        
+        _logger.LogInformation("Reset {AffectedRows} images to Unknown screenshot status", affectedRows);
+        return affectedRows;
+    }
+
+    public async Task<int> GetUnprocessedImageCountAsync()
+    {
+        return await _context.Images
+            .Where(img => !img.IsDeleted && img.FileExists && img.ScreenshotStatus == ScreenshotStatus.Unknown)
+            .CountAsync();
+    }
+
     public async Task<ScreenshotScanResult> ScanAllImagesAsync(IProgress<ScreenshotScanProgress>? progress = null, CancellationToken cancellationToken = default)
     {
-        // Get all image IDs to avoid loading full entities into memory
+        // Legacy method - scan all images without resetting
         var imageIds = await _context.Images
             .Where(img => !img.IsDeleted && img.FileExists)
             .Select(img => img.Id)
@@ -49,17 +98,25 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
             {
                 TotalImages = imageIdList.Count
             };
-            
+
+            if (imageIdList.Count == 0)
+            {
+                _logger.LogInformation("No images to process for screenshot detection");
+                progress?.Report(scanProgress);
+                return result;
+            }
+
+            _logger.LogInformation("Processing {TotalImages} images for screenshot detection", imageIdList.Count);
+
+            const int batchSize = 20;
+            var maxConcurrency = Environment.ProcessorCount;
+            const int progressUpdateIntervalMs = 250;
+
+            using var semaphore = new SemaphoreSlim(maxConcurrency, maxConcurrency);
             var lastProgressUpdate = DateTime.UtcNow;
-            const int progressUpdateIntervalMs = 100; // Update UI at most every 100ms
 
-            _logger.LogInformation("Starting screenshot detection scan for {ImageCount} images", imageIdList.Count);
-
-            // Process images in batches to avoid memory issues
-            const int batchSize = 50;
-            var batches = imageIdList.Chunk(batchSize);
-
-            foreach (var batch in batches)
+            // Process images in batches
+            for (int i = 0; i < imageIdList.Count; i += batchSize)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -67,14 +124,12 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
                     break;
                 }
 
-                // Load batch of images
-                var images = await _context.Images
-                    .Where(img => batch.Contains(img.Id))
+                var batchIds = imageIdList.Skip(i).Take(batchSize).ToList();
+                var batchImages = await _context.Images
+                    .Where(img => batchIds.Contains(img.Id))
                     .ToListAsync(cancellationToken);
 
-                // Process each image in the batch
-                var semaphore = new SemaphoreSlim(Environment.ProcessorCount, Environment.ProcessorCount);
-                var batchTasks = images.Select(async image =>
+                var batchTasks = batchImages.Select(async image =>
                 {
                     await semaphore.WaitAsync(cancellationToken);
                     try
@@ -99,7 +154,10 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
                     }
                     else if (detectionResult != null)
                     {
-                        image.IsScreenshot = detectionResult.IsScreenshot;
+                        // Update both new and legacy fields
+                        var newStatus = detectionResult.IsScreenshot ? ScreenshotStatus.IsScreenshot : ScreenshotStatus.NotScreenshot;
+                        image.ScreenshotStatus = newStatus;
+                        image.IsScreenshot = detectionResult.IsScreenshot; // Keep for backward compatibility
                         image.ScreenshotConfidence = detectionResult.Confidence;
                         
                         if (detectionResult.IsScreenshot)
@@ -133,17 +191,19 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error saving screenshot detection results for batch");
+                    _logger.LogError(ex, "Error saving batch changes to database");
+                    result.ErrorCount += batchImages.Count;
                     result.Errors.Add($"Database save error: {ex.Message}");
-                    result.ErrorCount++;
                 }
             }
 
-            stopwatch.Stop();
-            result.Duration = stopwatch.Elapsed;
+            // Final progress update
+            progress?.Report(scanProgress);
 
+            result.Duration = stopwatch.Elapsed;
+            
             _logger.LogInformation(
-                "Screenshot detection scan completed: {ProcessedImages}/{TotalImages} processed, {ScreenshotsFound} screenshots, {PhotosFound} photos, {ErrorCount} errors in {Duration}",
+                "Screenshot scan completed: {ProcessedImages}/{TotalImages} processed, {ScreenshotsFound} screenshots, {PhotosFound} photos, {ErrorCount} errors in {Duration:mm\\:ss}",
                 result.ProcessedImages, result.TotalImages, result.ScreenshotsFound, result.PhotosFound, result.ErrorCount, result.Duration);
 
             return result;
@@ -154,7 +214,8 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
         }
     }
 
-    private async Task<(Image image, ScreenshotDetectionResult? result, string? error)> ProcessSingleImageAsync(Image image, CancellationToken cancellationToken)
+    private async Task<(Models.Image image, ScreenshotDetectionResult? result, string? error)> ProcessSingleImageAsync(
+        Models.Image image, CancellationToken cancellationToken)
     {
         try
         {
@@ -168,7 +229,7 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error processing image {FileName} for screenshot detection", image.FileName);
+            _logger.LogWarning(ex, "Error processing image {FilePath}", image.FilePath);
             return (image, null, ex.Message);
         }
     }
@@ -177,37 +238,45 @@ public class ScreenshotDatabaseService : IScreenshotDatabaseService
     {
         var stats = await _context.Images
             .Where(img => !img.IsDeleted && img.FileExists)
-            .GroupBy(img => 1)
-            .Select(g => new ScreenshotStatistics
-            {
-                TotalImages = g.Count(),
-                ScreenshotCount = g.Count(img => img.IsScreenshot),
-                PhotoCount = g.Count(img => !img.IsScreenshot),
-                UnprocessedCount = g.Count(img => img.ScreenshotConfidence == 0.0)
-            })
-            .FirstOrDefaultAsync();
+            .GroupBy(img => img.ScreenshotStatus)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToListAsync();
 
-        return stats ?? new ScreenshotStatistics();
+        var totalImages = stats.Sum(s => s.Count);
+        var screenshotCount = stats.FirstOrDefault(s => s.Status == ScreenshotStatus.IsScreenshot)?.Count ?? 0;
+        var photoCount = stats.FirstOrDefault(s => s.Status == ScreenshotStatus.NotScreenshot)?.Count ?? 0;
+        var unknownCount = stats.FirstOrDefault(s => s.Status == ScreenshotStatus.Unknown)?.Count ?? 0;
+
+        return new ScreenshotStatistics
+        {
+            TotalImages = totalImages,
+            ScreenshotCount = screenshotCount,
+            PhotoCount = photoCount,
+            UnknownCount = unknownCount
+        };
     }
 
-    public async Task<List<Image>> GetImagesByScreenshotStatusAsync(bool isScreenshot, int skip = 0, int take = 50)
+    public async Task<List<Models.Image>> GetImagesByScreenshotStatusAsync(ScreenshotStatus status, int skip = 0, int take = 50)
     {
         return await _context.Images
-            .Where(img => !img.IsDeleted && img.FileExists && img.IsScreenshot == isScreenshot)
-            .OrderByDescending(img => img.DateTaken ?? img.DateCreated)
+            .Where(img => !img.IsDeleted && img.FileExists && img.ScreenshotStatus == status)
+            .OrderBy(img => img.DateCreated)
             .Skip(skip)
             .Take(take)
             .ToListAsync();
     }
 
-    public async Task UpdateImageScreenshotStatusAsync(int imageId, bool isScreenshot, double confidence)
+    public async Task UpdateImageScreenshotStatusAsync(int imageId, ScreenshotStatus status, double confidence)
     {
         var image = await _context.Images.FindAsync(imageId);
         if (image != null)
         {
-            image.IsScreenshot = isScreenshot;
+            image.ScreenshotStatus = status;
+            image.IsScreenshot = status == ScreenshotStatus.IsScreenshot; // Keep legacy field in sync
             image.ScreenshotConfidence = confidence;
             await _context.SaveChangesAsync();
+            
+            _logger.LogDebug("Updated image {ImageId} screenshot status to {Status}", imageId, status);
         }
     }
 

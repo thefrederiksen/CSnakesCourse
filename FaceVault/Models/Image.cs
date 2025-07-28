@@ -68,7 +68,8 @@ public class Image
     public string? ThumbnailPath { get; set; }
 
     // Classification
-    public bool IsScreenshot { get; set; } = false;
+    public ScreenshotStatus ScreenshotStatus { get; set; } = ScreenshotStatus.Unknown;
+    public bool IsScreenshot { get; set; } = false; // Keep for backward compatibility
     public double ScreenshotConfidence { get; set; } = 0.0;
 
     // JSON storage for additional metadata

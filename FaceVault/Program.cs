@@ -103,6 +103,11 @@ builder.Services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionServi
 builder.Services.AddScoped<IScreenshotDatabaseService, ScreenshotDatabaseService>();
 builder.Services.AddScoped<IFileOpenService, FileOpenService>();
 builder.Services.AddScoped<IHeicConverterService, HeicConverterService>();
+builder.Services.AddScoped<IHashCalculationService, HashCalculationService>();
+builder.Services.AddScoped<IDuplicateDetectionService, DuplicateDetectionService>();
+builder.Services.AddScoped<IDuplicateCleanupService, DuplicateCleanupService>();
+builder.Services.AddScoped<ILibraryReportService, LibraryReportService>();
+builder.Services.AddScoped<IImageOrientationService, ImageOrientationService>();
 builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.
@@ -158,15 +163,29 @@ try
         {
             Logger.Info($"Initializing database at: {dbPath}");
             
-            // Ensure database is created
+            // Ensure database is created with fresh schema
             var created = await dbContext.Database.EnsureCreatedAsync();
             if (created)
             {
-                Logger.Info("Database created successfully");
+                Logger.Info("Database created successfully with new schema");
             }
             else
             {
                 Logger.Info("Database already exists");
+                
+                // Force recreation if the schema is outdated
+                try
+                {
+                    // Test if ScreenshotStatus column exists
+                    await dbContext.Database.ExecuteSqlRawAsync("SELECT ScreenshotStatus FROM Images LIMIT 1;");
+                }
+                catch (Exception)
+                {
+                    Logger.Warning("Database has outdated schema, recreating...");
+                    await dbContext.Database.EnsureDeletedAsync();
+                    await dbContext.Database.EnsureCreatedAsync();
+                    Logger.Info("Database recreated with updated schema");
+                }
             }
             
             // Configure SQLite optimizations

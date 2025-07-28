@@ -7,6 +7,7 @@ public interface IDatabaseStatsService
 {
     Task<DatabaseStats> GetStatsAsync();
     Task RefreshStatsAsync();
+    Task<List<TagInfo>> GetAllTagsAsync();
 }
 
 public class DatabaseStatsService : IDatabaseStatsService
@@ -39,6 +40,30 @@ public class DatabaseStatsService : IDatabaseStatsService
     public async Task RefreshStatsAsync()
     {
         await RefreshAndGetStatsAsync();
+    }
+
+    public async Task<List<TagInfo>> GetAllTagsAsync()
+    {
+        try
+        {
+            var tags = await _context.Tags
+                .AsNoTracking()
+                .Select(t => new TagInfo
+                {
+                    TagName = t.Name,
+                    ImageCount = t.ImageTags.Count
+                })
+                .OrderByDescending(t => t.ImageCount)
+                .ThenBy(t => t.TagName)
+                .ToListAsync();
+
+            return tags;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Error getting tags: {ex.Message}");
+            return new List<TagInfo>();
+        }
     }
 
     private async Task<DatabaseStats> RefreshAndGetStatsAsync()
@@ -131,4 +156,10 @@ public class DatabaseStats
 
     public bool HasData => TotalImages > 0 || TotalPeople > 0 || TotalFaces > 0;
     public bool IsHealthy => string.IsNullOrEmpty(Error);
+}
+
+public class TagInfo
+{
+    public string TagName { get; set; } = string.Empty;
+    public int ImageCount { get; set; }
 }
