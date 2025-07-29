@@ -1,7 +1,5 @@
-using FaceVault.Data;
 using FaceVault.Services;
-using FaceVault.Models;
-using FaceVault.Repositories;
+using FaceVault.Data;
 using Microsoft.EntityFrameworkCore;
 using CSnakes.Runtime;
 using CSnakes.Runtime.PackageManagement;
@@ -13,26 +11,46 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
-// Set appropriate log levels to reduce console spam during scanning
-if (builder.Environment.IsDevelopment())
+// Check for verbose logging environment variable or configuration
+var enableVerboseLogging = Environment.GetEnvironmentVariable("FACEVAULT_VERBOSE_LOGGING")?.ToLower() == "true" ||
+                          builder.Configuration.GetValue<bool>("VerboseLogging");
+
+// Set appropriate log levels - default to Information for important events only
+if (enableVerboseLogging)
 {
-    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
-    // Reduce verbosity for specific categories
-    builder.Logging.AddFilter("Microsoft.AspNetCore", Microsoft.Extensions.Logging.LogLevel.Warning);
-    builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", Microsoft.Extensions.Logging.LogLevel.Warning);
-    builder.Logging.AddFilter("System", Microsoft.Extensions.Logging.LogLevel.Warning);
+    // Verbose mode - show all logs including debug
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+    builder.Logging.AddFilter("FaceVault", Microsoft.Extensions.Logging.LogLevel.Debug);
 }
 else
 {
-    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
+    // Default mode - show Information and above for our app, errors only for framework
+    builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Information);
+    
+    // Suppress verbose logs from framework components
+    builder.Logging.AddFilter("Microsoft", Microsoft.Extensions.Logging.LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.AspNetCore", Microsoft.Extensions.Logging.LogLevel.Warning);
+    builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", Microsoft.Extensions.Logging.LogLevel.Warning);
+    builder.Logging.AddFilter("System", Microsoft.Extensions.Logging.LogLevel.Warning);
+    
+    // Allow Information and above from our app
+    builder.Logging.AddFilter("FaceVault", Microsoft.Extensions.Logging.LogLevel.Information);
 }
 
 // Initialize PathService for proper user data management
 var pathService = new PathService();
 
 // Initialize custom logging early using proper user data directory
-Logger.Initialize(pathService.GetLogsDirectory(), FaceVault.Services.LogLevel.Info);
-Logger.Info("FaceVault Blazor application starting");
+var customLogLevel = enableVerboseLogging ? FaceVault.Services.LogLevel.Debug : FaceVault.Services.LogLevel.Info;
+Logger.Initialize(pathService.GetLogsDirectory(), customLogLevel);
+if (enableVerboseLogging)
+{
+    Logger.Info("FaceVault Blazor application starting (VERBOSE LOGGING ENABLED)");
+}
+else
+{
+    Logger.Info("FaceVault Blazor application starting");
+}
 
 // Ensure all application directories exist
 pathService.EnsureDirectoriesExist();
@@ -78,43 +96,16 @@ builder.Services.AddDbContext<FaceVaultDbContext>(options =>
     // Only log EF Core warnings and errors to reduce console spam during scanning
     .LogTo(message => Logger.Debug($"EF Core: {message}"), Microsoft.Extensions.Logging.LogLevel.Warning));
 
-// Add repositories
-builder.Services.AddScoped<IRepository<Image>, Repository<Image>>();
-builder.Services.AddScoped<IImageRepository, ImageRepository>();
-builder.Services.AddScoped<IRepository<Person>, Repository<Person>>();
-builder.Services.AddScoped<IPersonRepository, PersonRepository>();
-builder.Services.AddScoped<IRepository<Face>, Repository<Face>>();
-builder.Services.AddScoped<IRepository<Tag>, Repository<Tag>>();
-builder.Services.AddScoped<IRepository<ImageTag>, Repository<ImageTag>>();
-
 // Add path service as singleton (same paths throughout app lifetime)
 builder.Services.AddSingleton<IPathService>(pathService);
 
-// Add services
-builder.Services.AddScoped<ISettingsService, SettingsService>();
-builder.Services.AddScoped<IPhotoScannerService, PhotoScannerService>();
-builder.Services.AddScoped<IFastPhotoScannerService, FastPhotoScannerService>();
-builder.Services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
-builder.Services.AddScoped<IDatabaseStatsService, DatabaseStatsService>();
-builder.Services.AddScoped<IDatabaseSyncService, DatabaseSyncService>();
-builder.Services.AddScoped<IMemoryService, MemoryService>();
-builder.Services.AddScoped<IImageService, ImageService>();
-builder.Services.AddScoped<IScreenshotDetectionService, ScreenshotDetectionService>();
-builder.Services.AddScoped<IScreenshotDatabaseService, ScreenshotDatabaseService>();
-builder.Services.AddScoped<IFileOpenService, FileOpenService>();
-builder.Services.AddScoped<IHeicConverterService, HeicConverterService>();
-builder.Services.AddScoped<IHashCalculationService, HashCalculationService>();
-builder.Services.AddScoped<IDuplicateDetectionService, DuplicateDetectionService>();
-builder.Services.AddScoped<IDuplicateCleanupService, DuplicateCleanupService>();
-builder.Services.AddScoped<ILibraryReportService, LibraryReportService>();
-builder.Services.AddScoped<IImageOrientationService, ImageOrientationService>();
+// Add only working services
+builder.Services.AddScoped<IDatabaseInitializationService, DatabaseInitializationService>();
 builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChangeNotificationService>();
 
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-builder.Services.AddControllers();
-builder.Services.AddSingleton<ImageHashService>();
 
 var app = builder.Build();
 
@@ -136,7 +127,6 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.MapBlazorHub();
-app.MapControllers();
 app.MapFallbackToPage("/_Host");
 
 try
@@ -155,54 +145,47 @@ try
         Logger.Info("Python packages installed successfully");
     }
 
-    // Initialize database on startup
+    // Initialize database using SQL scripts
     using (var scope = app.Services.CreateScope())
     {
+        var dbInitService = scope.ServiceProvider.GetRequiredService<IDatabaseInitializationService>();
         var dbContext = scope.ServiceProvider.GetRequiredService<FaceVaultDbContext>();
+        
         try
         {
-            Logger.Info($"Initializing database at: {dbPath}");
+            Logger.Debug($"Initializing database at: {dbPath}");
             
-            // Ensure database is created with fresh schema
-            var created = await dbContext.Database.EnsureCreatedAsync();
-            if (created)
+            var success = await dbInitService.InitializeDatabaseAsync(connectionString);
+            if (success)
             {
-                Logger.Info("Database created successfully with new schema");
+                Logger.Info("Database initialized successfully");
+                
+                // Get current version
+                var version = await dbInitService.GetCurrentVersionAsync(connectionString);
+                Logger.Debug($"Database is at version: {version}");
             }
             else
             {
-                Logger.Info("Database already exists");
-                
-                // Force recreation if the schema is outdated
-                try
-                {
-                    // Test if ScreenshotStatus column exists
-                    await dbContext.Database.ExecuteSqlRawAsync("SELECT ScreenshotStatus FROM Images LIMIT 1;");
-                }
-                catch (Exception)
-                {
-                    Logger.Warning("Database has outdated schema, recreating...");
-                    await dbContext.Database.EnsureDeletedAsync();
-                    await dbContext.Database.EnsureCreatedAsync();
-                    Logger.Info("Database recreated with updated schema");
-                }
+                Logger.Error("Failed to initialize database");
+                throw new Exception("Database initialization failed");
             }
             
             // Configure SQLite optimizations
             await dbContext.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
             await dbContext.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;");
             await dbContext.Database.ExecuteSqlRawAsync("PRAGMA foreign_keys=ON;");
-            Logger.Info("SQLite optimizations applied");
+            Logger.Debug("SQLite optimizations applied");
             
             // Test connection
             var canConnect = await dbContext.Database.CanConnectAsync();
             if (canConnect)
             {
-                Logger.Info("Database connection test successful");
+                Logger.Debug("Database connection test successful");
                 
-                // Get initial counts
-                var imageCount = await dbContext.Images.CountAsync();
-                Logger.Info($"Database contains {imageCount} images");
+                // Get initial counts - disabled until EF models are scaffolded
+                // var imageCount = await dbContext.Images.CountAsync();
+                // Logger.Info($"Database contains {imageCount} images");
+                Logger.Debug("Database connection verified");
             }
             else
             {

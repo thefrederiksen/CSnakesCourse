@@ -1,0 +1,317 @@
+@page "/photo-scan"
+@using FaceVault.Services
+@implements IDisposable
+
+<PageTitle>Photo Scanner - FaceVault</PageTitle>
+
+<h1>Photo Scanner</h1>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Scanner Configuration ---->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><span class="oi oi-magnifying-glass" aria-hidden="true"></span> Scan Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Directory to Scan</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="@scanDirectory" readonly>
+                        <span class="input-group-text text-muted">
+                            <span class="oi oi-lock-locked" aria-hidden="true"></span>
+                        </span>
+                    </div>
+                    <div class="form-text">To change the scan directory, go to <a href="/settings">Settings</a></div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Scan Options</label>
+                    <div class="list-group">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="oi oi-@(includeSubdirectories ? "check" : "x") text-@(includeSubdirectories ? "success" : "muted")" aria-hidden="true"></span>
+                                Include subdirectories
+                            </div>
+                            <small class="text-muted">@(includeSubdirectories ? "Enabled" : "Disabled")</small>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="oi oi-layers" aria-hidden="true"></span>
+                                Batch size
+                            </div>
+                            <small class="text-muted">@batchSize files</small>
+                        </div>
+                    </div>
+                    <div class="form-text mt-2">To change scan options, go to <a href="/settings">Settings</a></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scan Progress ---->
+        @if (isScanning || scanResult != null)
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <span class="oi oi-@(isScanning ? "media-play" : "check")" aria-hidden="true"></span> 
+                        Scan Progress
+                    </h5>
+                    @if (isScanning)
+                    {
+                        <button class="btn btn-outline-danger btn-sm" @onclick="CancelScan">
+                            <span class="oi oi-media-stop" aria-hidden="true"></span> Cancel
+                        </button>
+                    }
+                </div>
+                <div class="card-body">
+                    @if (isScanning)
+                    {
+                        <div class="mb-3">
+                            @if (scanProgress != null)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>@scanProgress.Message</span>
+                                    <span>
+                                        @if (scanProgress.TotalCount > 0)
+                                        {
+                                            <text><strong>@scanProgress.ProcessedCount</strong> / @scanProgress.TotalCount</text>
+                                        }
+                                        else
+                                        {
+                                            <text><strong>@scanProgress.ProcessedCount</strong> files found...</text>
+                                        }
+                                    </span>
+                                </div>
+                                <div class="progress mb-2" style="height: 24px;">
+                                    @if (scanProgress.TotalCount > 0)
+                                    {
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                                             style="width: @(scanProgress.PercentComplete)%" 
+                                             aria-valuenow="@(scanProgress.PercentComplete)" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            @(scanProgress.PercentComplete.ToString("F1"))%
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" 
+                                             style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+                                            Discovering files...
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <!-- Initial loading state before any progress -->
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary mb-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p>Initializing scan...</p>
+                                </div>
+                            }
+                            @if (scanProgress != null)
+                            {
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Current File:</small><br>
+                                        <span class="small text-truncate d-inline-block" style="max-width: 150px;">
+                                            @(string.IsNullOrEmpty(scanProgress.CurrentFile) ? "—" : scanProgress.CurrentFile)
+                                        </span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Phase:</small><br>
+                                        <span class="badge bg-info">@scanProgress.Phase</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Progress:</small><br>
+                                        <strong>@scanProgress.ProcessedCount</strong> / @(scanProgress.TotalCount > 0 ? scanProgress.TotalCount.ToString() : "?")
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Speed:</small><br>
+                                        @if (scanProgress.ProcessedCount > 0)
+                                        {
+                                            <text><strong>@((scanProgress.ProcessedCount / Math.Max(1, (DateTime.Now - scanStartTime).TotalSeconds)).ToString("F1"))</strong> files/sec</text>
+                                        }
+                                        else
+                                        {
+                                            <strong>—</strong>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (scanResult != null && !isScanning)
+                    {
+                        <div class="alert alert-@(scanResult.IsSuccess ? "success" : scanResult.IsCancelled ? "warning" : "danger")" role="alert">
+                            <h6 class="alert-heading">
+                                @if (scanResult.IsSuccess)
+                                {
+                                    <span class="oi oi-check" aria-hidden="true"></span><text> Scan Completed Successfully</text>
+                                }
+                                else if (scanResult.IsCancelled)
+                                {
+                                    <span class="oi oi-warning" aria-hidden="true"></span><text> Scan Cancelled</text>
+                                }
+                                else
+                                {
+                                    <span class="oi oi-x" aria-hidden="true"></span><text> Scan Failed</text>
+                                }
+                            </h6>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <strong>@scanResult.TotalFilesFound</strong><br>
+                                    <small>Files Found</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>@scanResult.NewImagesCount</strong><br>
+                                    <small>New Images</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>@scanResult.SkippedCount</strong><br>
+                                    <small>Skipped</small>
+                                </div>
+                                <div class="col-md-3">
+                                    <strong>@scanResult.ErrorCount</strong><br>
+                                    <small>Errors</small>
+                                </div>
+                            </div>
+                            @if (scanResult.Duration.TotalSeconds > 0)
+                            {
+                                <hr>
+                                <p class="mb-0">
+                                    Duration: <strong>@scanResult.Duration.ToString(@"mm\:ss")</strong> | 
+                                    Speed: <strong>@(scanResult.FilesPerSecond.ToString("F1"))</strong> files/sec
+                                </p>
+                            }
+                            @if (!string.IsNullOrEmpty(scanResult.Error))
+                            {
+                                <hr>
+                                <p class="mb-0 text-danger"><strong>Error:</strong> @scanResult.Error</p>
+                            }
+                        </div>
+
+                        @if (scanResult.Errors.Any())
+                        {
+                            <div class="alert alert-warning" role="alert">
+                                <h6 class="alert-heading">Processing Errors (@scanResult.Errors.Count)</h6>
+                                <div class="accordion" id="errorAccordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="errorHeading">
+                                            <button class="accordion-button collapsed" type="button" 
+                                                    data-bs-toggle="collapse" data-bs-target="#errorCollapse">
+                                                Show Error Details
+                                            </button>
+                                        </h2>
+                                        <div id="errorCollapse" class="accordion-collapse collapse" 
+                                             data-bs-parent="#errorAccordion">
+                                            <div class="accordion-body">
+                                                @foreach (var error in scanResult.Errors.Take(10))
+                                                {
+                                                    <div class="small text-muted mb-1">@error</div>
+                                                }
+                                                @if (scanResult.Errors.Count > 10)
+                                                {
+                                                    <div class="small text-muted">... and @(scanResult.Errors.Count - 10) more errors</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Action Buttons ---->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <button class="btn btn-outline-secondary" @onclick="GoBack">
+                            <span class="oi oi-arrow-left" aria-hidden="true"></span> Back to Home
+                        </button>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" @onclick="StartScan" 
+                                disabled="@(isScanning || string.IsNullOrEmpty(scanDirectory))">
+                            @if (isScanning)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span class="oi oi-magnifying-glass" aria-hidden="true"></span> Start Scan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Scan Statistics ---->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><span class="oi oi-graph" aria-hidden="true"></span> Scan Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6>Supported File Types:</h6>
+                    <div class="d-flex flex-wrap">
+                        @foreach (var ext in supportedExtensions)
+                        {
+                            <span class="badge bg-secondary me-1 mb-1">@ext.ToUpper()</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Current Settings:</h6>
+                    <ul class="list-unstyled small">
+                        <li><span class="oi oi-folder" aria-hidden="true"></span> <strong>Directory:</strong> @(string.IsNullOrEmpty(scanDirectory) ? "Not set" : scanDirectory)</li>
+                        <li><span class="oi oi-@(includeSubdirectories ? "check" : "x")" aria-hidden="true"></span> <strong>Include Subdirectories:</strong> @(includeSubdirectories ? "Yes" : "No")</li>
+                        <li><span class="oi oi-layers" aria-hidden="true"></span> <strong>Batch Size:</strong> @batchSize files</li>
+                        <li><span class="oi oi-timer" aria-hidden="true"></span> <strong>Auto-scan on Startup:</strong> @(autoScanOnStartup ? "Yes" : "No")</li>
+                    </ul>
+                    <a href="/settings" class="btn btn-sm btn-outline-primary w-100">
+                        <span class="oi oi-cog" aria-hidden="true"></span> Change Settings
+                    </a>
+                </div>
+
+                @if (lastScanInfo != null)
+                {
+                    <div class="mb-3">
+                        <h6>Last Scan:</h6>
+                        <ul class="list-unstyled small">
+                            <li><strong>Date:</strong> @lastScanInfo.Value.ToString("MMM dd, yyyy HH:mm")</li>
+                            <li><strong>Status:</strong> Available</li>
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Help Information ---->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><span class="oi oi-question-mark" aria-hidden="true"></span> Help</h5>
+            </div>
+            <div class="card-body">
+                <h6>Tips for Scanning:</h6>
+                <ul class="small">
+                    <li>Large directories may take significant time to process</li>
+                    <li>The scanner will skip files already in the database</li>
+                    <li>Face recognition runs separately after scanning</li>
+                    <li>You can cancel the scan at any time</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+

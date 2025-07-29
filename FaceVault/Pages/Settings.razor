@@ -1,366 +1,307 @@
 @page "/settings"
+@using FaceVault.Data
 @using FaceVault.Models
 @using FaceVault.Services
-@inject ISettingsService SettingsService
-@inject IJSRuntime JSRuntime
-@implements IDisposable
+@using Microsoft.EntityFrameworkCore
+@inject FaceVaultDbContext DbContext
+@inject IPathService PathService
+@inject NavigationManager Navigation
+@inject ILogger<Settings> Logger
 
 <PageTitle>Settings - FaceVault</PageTitle>
 
-<h1>FaceVault Settings</h1>
-
-@if (isLoading)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading settings...</span>
-        </div>
-    </div>
-}
-else
-{
-    <div class="row">
-        <div class="col-md-8">
-            <!-- Feature Toggles Section -->
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><span class="oi oi-cog" aria-hidden="true"></span> Core Features</h5>
-                    <small class="text-muted">Enable/disable main functionality</small>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableFaceRecognition" 
-                                       @bind="settings.EnableFaceRecognition">
-                                <label class="form-check-label" for="enableFaceRecognition">
-                                    <strong>Face Recognition</strong>
-                                    <br><small class="text-muted">Detect and group faces automatically</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableOnThisDay" 
-                                       @bind="settings.EnableOnThisDay">
-                                <label class="form-check-label" for="enableOnThisDay">
-                                    <strong>On This Day</strong>
-                                    <br><small class="text-muted">Show memories from previous years</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableScreenshotFiltering" 
-                                       @bind="settings.EnableScreenshotFiltering">
-                                <label class="form-check-label" for="enableScreenshotFiltering">
-                                    <strong>Screenshot Filtering</strong>
-                                    <br><small class="text-muted">Automatically detect screenshots</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableDuplicateDetection" 
-                                       @bind="settings.EnableDuplicateDetection">
-                                <label class="form-check-label" for="enableDuplicateDetection">
-                                    <strong>Duplicate Detection</strong>
-                                    <br><small class="text-muted">Find and manage duplicate photos</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableCollageGeneration" 
-                                       @bind="settings.EnableCollageGeneration">
-                                <label class="form-check-label" for="enableCollageGeneration">
-                                    <strong>Collage Generation</strong>
-                                    <br><small class="text-muted">Create photo collages</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableLLMQuery" 
-                                       @bind="settings.EnableLLMQuery">
-                                <label class="form-check-label" for="enableLLMQuery">
-                                    <strong>AI Image Analysis</strong>
-                                    <br><small class="text-muted">Analyze and categorize photos using AI</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Photo Directory Section -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><span class="oi oi-folder" aria-hidden="true"></span> Photo Directory</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-9">
-                            <div class="mb-3">
-                                <label for="photoDirectory" class="form-label">Photo Folder Location</label>
-                                <input type="text" class="form-control" id="photoDirectory" 
-                                       @bind="settings.PhotoDirectory" placeholder="Select photo directory...">
-                                <div class="form-text">Choose the main folder containing your photos</div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">&nbsp;</label>
-                            <button class="btn btn-outline-primary w-100" @onclick="BrowseForDirectory">
-                                <span class="oi oi-folder" aria-hidden="true"></span> Browse
-                            </button>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="autoScanOnStartup" 
-                                       @bind="settings.AutoScanOnStartup">
-                                <label class="form-check-label" for="autoScanOnStartup">
-                                    Auto-scan on startup
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="scanSubdirectories" 
-                                       @bind="settings.ScanSubdirectories">
-                                <label class="form-check-label" for="scanSubdirectories">
-                                    Include subdirectories
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- LLM Configuration (if enabled) -->
-            @if (settings.EnableLLMQuery)
-            {
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <h5 class="mb-0"><span class="oi oi-comment-square" aria-hidden="true"></span> AI Assistant Configuration</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="llmProvider" class="form-label">AI Provider</label>
-                                    <select class="form-select" id="llmProvider" @bind:get="settings.LLMProvider" @bind:set="OnProviderChanged">
-                                        <option value="OpenAI">OpenAI (GPT-4o)</option>
-                                        <option value="AzureOpenAI">Azure OpenAI</option>
-                                        <option value="GoogleAI">Google AI (Gemini)</option>
-                                        <option value="Groq">Groq Cloud</option>
-                                        <option value="Together">Together AI</option>
-                                        <option value="Local">Local Model (LM Studio/Ollama)</option>
-                                        <option value="Custom">Custom OpenAI-Compatible</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="llmModel" class="form-label">Model</label>
-                                    <input type="text" class="form-control" id="llmModel" 
-                                           @bind="settings.LLMModel" placeholder="e.g., gpt-3.5-turbo">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="llmApiKey" class="form-label">API Key</label>
-                            <input type="password" class="form-control" id="llmApiKey" 
-                                   @bind="settings.LLMApiKey" placeholder="Enter your API key...">
-                            <div class="form-text">Your API key is stored locally and never shared</div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="llmApiEndpoint" class="form-label">API Endpoint</label>
-                            <input type="url" class="form-control" id="llmApiEndpoint" 
-                                   @bind="settings.LLMApiEndpoint" placeholder="@GetApiEndpointPlaceholder()">
-                            <div class="form-text">@GetApiEndpointDescription()</div>
-                        </div>
-                        <div class="alert alert-info mt-3">
-                            <strong><span class="oi oi-info" aria-hidden="true"></span> Provider Requirements:</strong><br>
-                            All listed providers support:
-                            <ul class="mb-0">
-                                <li>Vision/Image analysis capabilities</li>
-                                <li>Structured JSON outputs for metadata extraction</li>
-                                <li>OpenAI-compatible API format</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            }
-
-            <!-- Performance Settings -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><span class="oi oi-dashboard" aria-hidden="true"></span> Performance Settings</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="batchSize" class="form-label">Batch Size</label>
-                                <input type="number" class="form-control" id="batchSize" 
-                                       @bind="settings.BatchSize" min="10" max="500">
-                                <div class="form-text">Photos processed per batch</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="maxMemoryUsage" class="form-label">Max Memory (MB)</label>
-                                <input type="number" class="form-control" id="maxMemoryUsage" 
-                                       @bind="settings.MaxMemoryUsageMB" min="512" max="8192">
-                                <div class="form-text">Maximum memory usage</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="maxConcurrentTasks" class="form-label">Concurrent Tasks</label>
-                                <input type="number" class="form-control" id="maxConcurrentTasks" 
-                                       @bind="settings.MaxConcurrentTasks" min="1" max="16">
-                                <div class="form-text">Parallel processing tasks</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Privacy & Security -->
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><span class="oi oi-shield" aria-hidden="true"></span> Privacy & Security</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="encryptFaceEncodings" 
-                                       @bind="settings.EncryptFaceEncodings">
-                                <label class="form-check-label" for="encryptFaceEncodings">
-                                    <strong>Encrypt face data</strong>
-                                    <br><small class="text-muted">Encrypt face recognition data</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="createBackups" 
-                                       @bind="settings.CreateBackups">
-                                <label class="form-check-label" for="createBackups">
-                                    <strong>Create backups</strong>
-                                    <br><small class="text-muted">Backup settings and data</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="allowTelemetry" 
-                                       @bind="settings.AllowTelemetry">
-                                <label class="form-check-label" for="allowTelemetry">
-                                    <strong>Anonymous telemetry</strong>
-                                    <br><small class="text-muted">Help improve FaceVault</small>
-                                </label>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="form-check form-switch mb-3">
-                                <input class="form-check-input" type="checkbox" id="enableDetailedLogging" 
-                                       @bind="settings.EnableDetailedLogging">
-                                <label class="form-check-label" for="enableDetailedLogging">
-                                    <strong>Detailed logging</strong>
-                                    <br><small class="text-muted">Enhanced debug information</small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Settings Summary Sidebar -->
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><span class="oi oi-info" aria-hidden="true"></span> Quick Setup</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-success" @onclick="EnableAllFeatures">
-                            <span class="oi oi-check" aria-hidden="true"></span> Enable All Features
-                        </button>
-                        <button class="btn btn-outline-secondary" @onclick="ResetToDefaults">
-                            <span class="oi oi-reload" aria-hidden="true"></span> Reset to Defaults
-                        </button>
-                        <button class="btn btn-outline-info" @onclick="UseRecommendedSettings">
-                            <span class="oi oi-thumb-up" aria-hidden="true"></span> Recommended Settings
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0"><span class="oi oi-wrench" aria-hidden="true"></span> Advanced Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-outline-primary" @onclick="ExportSettings">
-                            <span class="oi oi-data-transfer-download" aria-hidden="true"></span> Export Settings
-                        </button>
-                        <button class="btn btn-outline-primary" @onclick="ImportSettings">
-                            <span class="oi oi-data-transfer-upload" aria-hidden="true"></span> Import Settings
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between">
+<div class="container-fluid">
+    <h1 class="display-4">Settings</h1>
+    <p class="lead">Configure FaceVault application settings</p>
+    
+    @if (showSuccessMessage)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-lg border-success border-2" role="alert" style="animation: slideInDown 0.3s ease-out;">
+            <div class="d-flex align-items-center">
+                <span class="oi oi-check fs-4 me-3" aria-hidden="true"></span>
                 <div>
-                    <button class="btn btn-outline-secondary" @onclick="Cancel">
-                        <span class="oi oi-x" aria-hidden="true"></span> Cancel
+                    <strong>Success!</strong> Your settings have been saved successfully.
+                </div>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => showSuccessMessage = false"></button>
+        </div>
+    }
+    
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span class="oi oi-x" aria-hidden="true"></span> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+    
+    @if (showResetMessage)
+    {
+        <div class="alert alert-info alert-dismissible fade show shadow-lg border-info border-2" role="alert" style="animation: slideInDown 0.3s ease-out;">
+            <div class="d-flex align-items-center">
+                <span class="oi oi-reload fs-4 me-3" aria-hidden="true"></span>
+                <div>
+                    <strong>Reset!</strong> Settings have been reset to defaults. Remember to save your changes.
+                </div>
+            </div>
+            <button type="button" class="btn-close" @onclick="() => showResetMessage = false"></button>
+        </div>
+    }
+
+    @if (settings == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <form @onsubmit="SaveSettings" @onsubmit:preventDefault="true">
+            <div class="row">
+                <!-- General Settings -->
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><span class="oi oi-cog" aria-hidden="true"></span> General Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Theme</label>
+                                <select class="form-select" @bind="settings.ThemeName">
+                                    <option value="">Default</option>
+                                    <option value="dark">Dark</option>
+                                    <option value="light">Light</option>
+                                </select>
+                            </div>
+                            
+                            <h6 class="mt-4">Feature Toggles</h6>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="enableDuplicates" 
+                                       checked="@(settings.EnableDuplicateDetection == 1)"
+                                       @onchange="@((e) => settings.EnableDuplicateDetection = (bool)e.Value! ? 1 : 0)">
+                                <label class="form-check-label" for="enableDuplicates">
+                                    Enable Duplicate Detection
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enableAI" 
+                                       checked="@(settings.EnableAIImageAnalysis == 1)"
+                                       @onchange="@((e) => settings.EnableAIImageAnalysis = (bool)e.Value! ? 1 : 0)">
+                                <label class="form-check-label" for="enableAI">
+                                    Enable AI Image Analysis
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Directory Settings -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><span class="oi oi-folder" aria-hidden="true"></span> Directory Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Default Photo Directory</label>
+                                <input type="text" class="form-control" @bind="settings.PhotoDirectory" 
+                                       placeholder="e.g., C:\Users\YourName\Pictures">
+                                <div class="form-text">Default directory for photo scanning</div>
+                            </div>
+                            
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="scanSubdirs" 
+                                       checked="@(settings.ScanSubdirectories == 1)"
+                                       @onchange="@((e) => settings.ScanSubdirectories = (bool)e.Value! ? 1 : 0)">
+                                <label class="form-check-label" for="scanSubdirs">
+                                    Scan Subdirectories
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="autoScan" 
+                                       checked="@(settings.AutoScanOnStartup == 1)"
+                                       @onchange="@((e) => settings.AutoScanOnStartup = (bool)e.Value! ? 1 : 0)">
+                                <label class="form-check-label" for="autoScan">
+                                    Auto-scan on Startup
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Settings -->
+                <div class="col-md-6">
+                    <div class="card mb-4" id="ai-settings">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><span class="oi oi-beaker" aria-hidden="true"></span> AI Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (settings.EnableAIImageAnalysis != 1)
+                            {
+                                <div class="alert alert-warning">
+                                    <span class="oi oi-warning" aria-hidden="true"></span> 
+                                    Enable AI Image Analysis above to configure these settings.
+                                </div>
+                            }
+                            
+                            <div class="mb-3">
+                                <label class="form-label">AI Provider <span class="text-danger">*</span></label>
+                                <select class="form-select" value="@settings.AIProvider" 
+                                        @onchange="OnAIProviderChanged"
+                                        disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                    <option value="">-- Select Provider --</option>
+                                    <option value="OpenAI">OpenAI</option>
+                                    <option value="Azure">Azure Cognitive Services</option>
+                                    <option value="Google">Google Vision AI</option>
+                                    <option value="AWS">AWS Rekognition</option>
+                                    <option value="Local">Local Model</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">API Key <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="@(showApiKey ? "text" : "password")" 
+                                           class="form-control" @bind="settings.AIApiKey" 
+                                           placeholder="Enter your API key"
+                                           disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                    <button class="btn btn-outline-secondary" type="button" 
+                                            @onclick="() => showApiKey = !showApiKey"
+                                            disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                        <span class="oi oi-@(showApiKey ? "eye" : "lock-locked")" aria-hidden="true"></span>
+                                    </button>
+                                </div>
+                                <div class="form-text">Your API key is stored locally and never shared</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">API Endpoint</label>
+                                <input type="text" class="form-control" @bind="settings.AIApiEndpoint" 
+                                       placeholder="@GetEndpointPlaceholder()"
+                                       disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                <div class="form-text">Default endpoint will be used if left empty</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Model</label>
+                                <input type="text" class="form-control" @bind="settings.AIModel" 
+                                       placeholder="@GetModelPlaceholder()"
+                                       disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                <div class="form-text">Recommended model will be used if left empty</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Temperature</label>
+                                <input type="number" class="form-control" @bind="settings.AITemperature" 
+                                       step="0.1" min="0" max="2"
+                                       disabled="@(settings.EnableAIImageAnalysis != 1)">
+                                <div class="form-text">0.0 = Most focused, 2.0 = Most creative</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Settings -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><span class="oi oi-dashboard" aria-hidden="true"></span> Performance Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Batch Size</label>
+                                <input type="number" class="form-control" @bind="settings.BatchSize" 
+                                       min="1" max="1000">
+                                <div class="form-text">Number of files to process at once</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Max Concurrent Tasks</label>
+                                <input type="number" class="form-control" @bind="settings.MaxConcurrentTasks" 
+                                       min="1" max="20">
+                                <div class="form-text">Maximum parallel operations</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Action Buttons -->
+            <div class="d-flex justify-content-between mb-4">
+                <button type="button" class="btn btn-outline-secondary" @onclick="GoBack">
+                    <span class="oi oi-arrow-left" aria-hidden="true"></span> Back to Home
+                </button>
+                <div>
+                    <button type="button" class="btn btn-outline-warning me-2" @onclick="ResetToDefaults" disabled="@isResetting">
+                        @if (isResetting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Resetting...</span>
+                        }
+                        else
+                        {
+                            <span class="oi oi-reload" aria-hidden="true"></span>
+                            <text> Reset to Defaults</text>
+                        }
                     </button>
-                </div>
-                <div>
-                    <button class="btn btn-primary me-2" @onclick="SaveSettings" disabled="@isSaving">
+                    <button type="submit" class="btn btn-primary btn-lg px-4" disabled="@isSaving">
                         @if (isSaving)
                         {
                             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Saving...</span>
                         }
-                        <span class="oi oi-check" aria-hidden="true"></span> Save Settings
-                    </button>
-                    <button class="btn btn-success" @onclick="SaveAndClose" disabled="@isSaving">
-                        <span class="oi oi-check" aria-hidden="true"></span> Save & Close
+                        else
+                        {
+                            <span class="oi oi-check" aria-hidden="true"></span>
+                            <text> Save Settings</text>
+                        }
                     </button>
                 </div>
             </div>
-        </div>
-    </div>
-}
+        </form>
+    }
+</div>
 
-@if (!string.IsNullOrEmpty(statusMessage))
-{
-    <div class="alert alert-@statusMessageType alert-dismissible fade show mt-3" role="alert">
-        @statusMessage
-        <button type="button" class="btn-close" @onclick="ClearStatusMessage"></button>
-    </div>
-}
+<style>
+    @@keyframes slideInDown {
+        from {
+            transform: translateY(-20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .btn:not(:disabled):hover {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
+    }
+    
+    .btn:not(:disabled):active {
+        transform: scale(0.98);
+    }
+    
+    .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .alert-success {
+        position: relative;
+        z-index: 1000;
+    }
+</style>
 
 @code {
-    private AppSettings settings = new();
-    private bool isLoading = true;
+    private tbl_app_settings? settings;
     private bool isSaving = false;
-    private string statusMessage = "";
-    private string statusMessageType = "info";
+    private bool showSuccessMessage = false;
+    private string errorMessage = string.Empty;
+    private bool showApiKey = false;
+    private bool isResetting = false;
+    private bool showResetMessage = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -369,46 +310,98 @@ else
 
     private async Task LoadSettings()
     {
-        isLoading = true;
         try
         {
-            settings = await SettingsService.GetSettingsAsync();
+            settings = await DbContext.tbl_app_settings.FirstOrDefaultAsync();
             
-            // Pre-populate API endpoint and model if provider is set but they are empty
-            if (!string.IsNullOrEmpty(settings.LLMProvider))
+            if (settings == null)
             {
-                if (string.IsNullOrEmpty(settings.LLMApiEndpoint))
-                {
-                    settings.LLMApiEndpoint = GetDefaultApiEndpoint(settings.LLMProvider);
-                }
-                if (string.IsNullOrEmpty(settings.LLMModel))
-                {
-                    settings.LLMModel = GetDefaultModel(settings.LLMProvider);
-                }
+                // Create default settings if none exist
+                settings = CreateDefaultSettings();
+                DbContext.tbl_app_settings.Add(settings);
+                await DbContext.SaveChangesAsync();
+                Logger.LogInformation("Created default application settings");
             }
         }
         catch (Exception ex)
         {
-            ShowStatusMessage($"Error loading settings: {ex.Message}", "danger");
-        }
-        finally
-        {
-            isLoading = false;
+            Logger.LogError(ex, "Error loading settings");
+            errorMessage = "Failed to load settings: " + ex.Message;
         }
     }
 
+    private tbl_app_settings CreateDefaultSettings()
+    {
+        var defaultPhotoDir = Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
+        
+        return new tbl_app_settings
+        {
+            Id = 1,
+            EnableDuplicateDetection = 1,
+            EnableAIImageAnalysis = 0,
+            PhotoDirectory = defaultPhotoDir,
+            AutoScanOnStartup = 0,
+            ScanSubdirectories = 1,
+            SupportJpeg = 1,
+            SupportPng = 1,
+            SupportGif = 1,
+            SupportBmp = 1,
+            SupportWebp = 1,
+            SupportHeic = 0,
+            BatchSize = 100,
+            MaxConcurrentTasks = 4,
+            ThemeName = "default",
+            DateCreated = DateTime.UtcNow,
+            DateModified = DateTime.UtcNow
+        };
+    }
 
     private async Task SaveSettings()
     {
-        isSaving = true;
+        if (settings == null) return;
+
         try
         {
-            await SettingsService.SaveSettingsAsync(settings);
-            ShowStatusMessage("Settings saved successfully!", "success");
+            isSaving = true;
+            errorMessage = string.Empty;
+            
+            // Validate AI settings if enabled
+            if (settings.EnableAIImageAnalysis == 1)
+            {
+                if (string.IsNullOrWhiteSpace(settings.AIProvider))
+                {
+                    errorMessage = "Please select an AI Provider";
+                    return;
+                }
+                
+                if (string.IsNullOrWhiteSpace(settings.AIApiKey))
+                {
+                    errorMessage = "Please enter an API Key for AI analysis";
+                    return;
+                }
+            }
+            
+            // Update modified date
+            settings.DateModified = DateTime.UtcNow;
+            
+            // Save to database
+            DbContext.Update(settings);
+            await DbContext.SaveChangesAsync();
+            
+            showSuccessMessage = true;
+            Logger.LogInformation("Settings saved successfully");
+            
+            // Hide success message after 5 seconds
+            _ = Task.Delay(5000).ContinueWith(_ => 
+            {
+                showSuccessMessage = false;
+                InvokeAsync(StateHasChanged);
+            });
         }
         catch (Exception ex)
         {
-            ShowStatusMessage($"Error saving settings: {ex.Message}", "danger");
+            Logger.LogError(ex, "Error saving settings");
+            errorMessage = "Failed to save settings: " + ex.Message;
         }
         finally
         {
@@ -416,184 +409,116 @@ else
         }
     }
 
-    private async Task SaveAndClose()
+    private Task ResetToDefaults()
     {
-        await SaveSettings();
-        if (string.IsNullOrEmpty(statusMessage) || statusMessageType == "success")
+        if (settings == null) return Task.CompletedTask;
+        
+        isResetting = true;
+        showResetMessage = false;
+        errorMessage = "";
+        StateHasChanged();
+        
+        var defaultSettings = CreateDefaultSettings();
+        
+        // Preserve the ID and creation date
+        defaultSettings.Id = settings.Id;
+        defaultSettings.DateCreated = settings.DateCreated;
+        
+        settings = defaultSettings;
+        
+        showResetMessage = true;
+        isResetting = false;
+        StateHasChanged();
+        
+        // Hide reset message after 3 seconds
+        _ = Task.Delay(3000).ContinueWith(_ => 
         {
-            await JSRuntime.InvokeVoidAsync("history.back");
-        }
-    }
-
-    private async Task Cancel()
-    {
-        await LoadSettings(); // Reload original settings
-        await JSRuntime.InvokeVoidAsync("history.back");
-    }
-
-    private void EnableAllFeatures()
-    {
-        settings.EnableAllFeatures();
-        ShowStatusMessage("All features enabled", "info");
-    }
-
-    private async Task ResetToDefaults()
-    {
-        try
-        {
-            settings = await SettingsService.ResetToDefaultsAsync();
-            ShowStatusMessage("Settings reset to defaults", "info");
-        }
-        catch (Exception ex)
-        {
-            ShowStatusMessage($"Error resetting settings: {ex.Message}", "danger");
-        }
-    }
-
-    private void UseRecommendedSettings()
-    {
-        // Enable most features but with conservative performance settings
-        settings.EnableAllFeatures();
-        settings.AutoScanOnStartup = false; // Don't auto-scan
-        settings.EnableDetailedLogging = false; // Keep logs minimal
-        settings.AllowTelemetry = false; // Privacy first
-        settings.EncryptFaceEncodings = true; // Security on
-        settings.BatchSize = 50; // Conservative batch size
-        settings.MaxMemoryUsageMB = 1024; // 1GB max
-
-        ShowStatusMessage("Recommended settings applied", "success");
-    }
-
-    private Task BrowseForDirectory()
-    {
-        try
-        {
-            // This would normally open a folder browser dialog
-            // For now, we'll use a simple prompt as a placeholder
-            ShowStatusMessage("Folder browser not implemented yet. Please type the path manually.", "info");
-        }
-        catch (Exception ex)
-        {
-            ShowStatusMessage($"Error browsing for directory: {ex.Message}", "danger");
-        }
+            showResetMessage = false;
+            InvokeAsync(StateHasChanged);
+        });
+        
         return Task.CompletedTask;
     }
 
-    private async Task ExportSettings()
+    private void GoBack()
     {
-        try
-        {
-            var exportJson = await SettingsService.ExportSettingsAsync();
-            // In a real implementation, this would download the file
-            ShowStatusMessage("Settings exported (download functionality not implemented yet)", "info");
-        }
-        catch (Exception ex)
-        {
-            ShowStatusMessage($"Error exporting settings: {ex.Message}", "danger");
-        }
+        Navigation.NavigateTo("/");
     }
 
-    private Task ImportSettings()
+    private void OnAIProviderChanged(ChangeEventArgs e)
     {
-        try
-        {
-            // In a real implementation, this would open a file picker
-            ShowStatusMessage("Import functionality not implemented yet", "info");
-            return Task.CompletedTask;
-        }
-        catch (Exception ex)
-        {
-            ShowStatusMessage($"Error importing settings: {ex.Message}", "danger");
-            return Task.CompletedTask;
-        }
-    }
-
-    private void ShowStatusMessage(string message, string type)
-    {
-        statusMessage = message;
-        statusMessageType = type;
-        StateHasChanged();
-    }
-
-    private void ClearStatusMessage()
-    {
-        statusMessage = "";
-        StateHasChanged();
-    }
-
-    private void OnProviderChanged(string? newProvider)
-    {
-        settings.LLMProvider = newProvider ?? "";
+        if (settings == null) return;
         
-        // Pre-populate API endpoint and model based on provider
-        settings.LLMApiEndpoint = GetDefaultApiEndpoint(newProvider ?? "");
-        settings.LLMModel = GetDefaultModel(newProvider ?? "");
+        var provider = e.Value?.ToString();
+        if (string.IsNullOrEmpty(provider)) return;
+        
+        settings.AIProvider = provider;
+        
+        // Set default API endpoints and models based on provider
+        switch (provider)
+        {
+            case "OpenAI":
+                if (string.IsNullOrWhiteSpace(settings.AIApiEndpoint))
+                    settings.AIApiEndpoint = "https://api.openai.com/v1";
+                if (string.IsNullOrWhiteSpace(settings.AIModel))
+                    settings.AIModel = "gpt-4o-mini";
+                break;
+                
+            case "Azure":
+                if (string.IsNullOrWhiteSpace(settings.AIApiEndpoint))
+                    settings.AIApiEndpoint = "https://YOUR-RESOURCE-NAME.cognitiveservices.azure.com/";
+                if (string.IsNullOrWhiteSpace(settings.AIModel))
+                    settings.AIModel = "gpt-4";
+                break;
+                
+            case "Google":
+                if (string.IsNullOrWhiteSpace(settings.AIApiEndpoint))
+                    settings.AIApiEndpoint = "https://vision.googleapis.com/v1";
+                if (string.IsNullOrWhiteSpace(settings.AIModel))
+                    settings.AIModel = "gemini-pro-vision";
+                break;
+                
+            case "AWS":
+                if (string.IsNullOrWhiteSpace(settings.AIApiEndpoint))
+                    settings.AIApiEndpoint = "https://rekognition.us-east-1.amazonaws.com";
+                if (string.IsNullOrWhiteSpace(settings.AIModel))
+                    settings.AIModel = "rekognition-v1";
+                break;
+                
+            case "Local":
+                if (string.IsNullOrWhiteSpace(settings.AIApiEndpoint))
+                    settings.AIApiEndpoint = "http://localhost:1234/v1";
+                if (string.IsNullOrWhiteSpace(settings.AIModel))
+                    settings.AIModel = "llava-v1.5-7b";
+                break;
+        }
         
         StateHasChanged();
     }
 
-    private string GetDefaultApiEndpoint(string provider)
+    private string GetEndpointPlaceholder()
     {
-        return provider switch
+        return settings?.AIProvider switch
         {
             "OpenAI" => "https://api.openai.com/v1",
-            "AzureOpenAI" => "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
-            "GoogleAI" => "https://generativelanguage.googleapis.com/v1beta",
-            "Groq" => "https://api.groq.com/openai/v1",
-            "Together" => "https://api.together.xyz/v1",
+            "Azure" => "https://YOUR-RESOURCE-NAME.cognitiveservices.azure.com/",
+            "Google" => "https://vision.googleapis.com/v1",
+            "AWS" => "https://rekognition.us-east-1.amazonaws.com",
             "Local" => "http://localhost:1234/v1",
-            "Custom" => "",
-            _ => ""
+            _ => "https://api.example.com/v1"
         };
     }
-    
-    private string GetDefaultModel(string provider)
+
+    private string GetModelPlaceholder()
     {
-        return provider switch
+        return settings?.AIProvider switch
         {
             "OpenAI" => "gpt-4o-mini",
-            "AzureOpenAI" => "gpt-4o-mini",
-            "GoogleAI" => "gemini-1.5-flash-latest",
-            "Groq" => "llava-v1.5-7b-4096-preview",
-            "Together" => "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
-            "Local" => "llava-v1.6-mistral-7b",
-            "Custom" => "",
-            _ => "gpt-4o-mini"
+            "Azure" => "gpt-4",
+            "Google" => "gemini-pro-vision",
+            "AWS" => "rekognition-v1",
+            "Local" => "llava-v1.5-7b",
+            _ => "e.g., gpt-4o-mini, claude-3"
         };
-    }
-
-    private string GetApiEndpointPlaceholder()
-    {
-        return settings.LLMProvider switch
-        {
-            "OpenAI" => "https://api.openai.com/v1",
-            "AzureOpenAI" => "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
-            "GoogleAI" => "https://generativelanguage.googleapis.com/v1beta",
-            "Groq" => "https://api.groq.com/openai/v1",
-            "Together" => "https://api.together.xyz/v1",
-            "Local" => "http://localhost:1234/v1",
-            "Custom" => "https://your-custom-api.com/v1",
-            _ => "Enter API endpoint URL..."
-        };
-    }
-
-    private string GetApiEndpointDescription()
-    {
-        return settings.LLMProvider switch
-        {
-            "OpenAI" => "Official OpenAI API endpoint (pre-filled) - Supports GPT-4o models with vision",
-            "AzureOpenAI" => "Your Azure OpenAI resource endpoint - update with your resource and deployment names",
-            "GoogleAI" => "Google AI Studio endpoint - Gemini models with vision capabilities",
-            "Groq" => "Groq Cloud API endpoint - Fast inference with LLaVA vision model",
-            "Together" => "Together AI endpoint - Llama 3.2 Vision and other multimodal models",
-            "Local" => "Local model server endpoint (e.g., LM Studio with LLaVA, Ollama with vision models)",
-            "Custom" => "Enter your custom OpenAI-compatible API endpoint that supports vision",
-            _ => "API endpoint for your selected provider"
-        };
-    }
-
-    public void Dispose()
-    {
-        // Cleanup if needed
     }
 }

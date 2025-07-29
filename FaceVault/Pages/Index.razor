@@ -1,164 +1,38 @@
 @page "/"
-@using FaceVault.Services
-@using FaceVault.Components
 
-<PageTitle>@GetPageTitle()</PageTitle>
+<PageTitle>FaceVault</PageTitle>
 
-<FaceVault.Components.ErrorBoundary PageName="Home">
-
-<div class="container-fluid py-3">
-    <!-- Header with Date Navigation -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h2 mb-1">
-                        <span class="oi oi-calendar me-2 text-primary" aria-hidden="true"></span>
-                        @GetDisplayTitle()
-                    </h1>
-                    <p class="text-muted mb-0">@GetSubtitle()</p>
-                </div>
-                
-                <!-- Date Navigation -->
-                <div class="btn-group" role="group">
-                    <button class="btn btn-outline-secondary" @onclick="LoadPreviousDay" title="Previous day">
-                        <span class="oi oi-chevron-left" aria-hidden="true"></span>
-                    </button>
-                    <button class="btn btn-outline-primary" @onclick="LoadToday" title="Today">
-                        <span class="oi oi-home" aria-hidden="true"></span>
-                        Today
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="LoadNextDay" 
-                            disabled="@(currentDate >= DateTime.Today)" title="Next day">
-                        <span class="oi oi-chevron-right" aria-hidden="true"></span>
-                    </button>
-                    <button class="btn btn-outline-secondary" @onclick="RefreshMemories" title="Refresh">
-                        <span class="oi oi-reload" aria-hidden="true"></span>
-                    </button>
-                </div>
-            </div>
+<div class="container-fluid">
+    <h1 class="display-4">FaceVault</h1>
+    <p class="lead">Database-first photo management system</p>
+    
+    <div class="alert alert-info" role="alert">
+        <h4 class="alert-heading">🚧 Under Construction</h4>
+        <p>The application is being rebuilt with a new database-first architecture.</p>
+        <hr>
+        <p class="mb-0">Features will be restored incrementally as the new models are integrated.</p>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <h3>Database Schema</h3>
+            <p>New modular table structure:</p>
+            <ul>
+                <li><strong>tbl_images</strong> - Core image files</li>
+                <li><strong>tbl_image_metadata</strong> - Image dimensions, EXIF</li>
+                <li><strong>tbl_image_analysis</strong> - AI analysis results</li>
+                <li><strong>tbl_app_settings</strong> - Application settings</li>
+            </ul>
+        </div>
+        <div class="col-md-6">
+            <h3>Available Features</h3>
+            <p>Currently working:</p>
+            <ul>
+                <li>✅ <strong><a href="/photo-scan">Photo scanning</a></strong> - Hash calculation & duplicate detection</li>
+                <li>✅ <strong><a href="/database-scan">AI Analysis</a></strong> - Image categorization & description</li>
+                <li>✅ <strong><a href="/database-status">Database Status</a></strong> - Monitor database health</li>
+                <li>🚧 Settings management</li>
+            </ul>
         </div>
     </div>
-
-    @if (isLoading)
-    {
-        <!-- Loading State -->
-        <div class="row">
-            <div class="col-12 text-center py-5">
-                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
-                    <span class="visually-hidden">Loading memories...</span>
-                </div>
-                <h4 class="text-muted">Finding your memories...</h4>
-                <p class="text-muted">Looking for photos from @currentDate.ToString("MMMM d")</p>
-            </div>
-        </div>
-    }
-    else if (!string.IsNullOrEmpty(errorMessage))
-    {
-        <!-- Error State -->
-        <div class="row">
-            <div class="col-12">
-                <div class="alert alert-danger text-center" role="alert">
-                    <span class="oi oi-warning me-2" aria-hidden="true"></span>
-                    @errorMessage
-                </div>
-            </div>
-        </div>
-    }
-    else if (todaysMemories?.HasMemories != true)
-    {
-        <!-- Empty State -->
-        <div class="row">
-            <div class="col-12 text-center py-5">
-                <div class="mb-4">
-                    <span class="oi oi-image display-1 text-muted" aria-hidden="true"></span>
-                </div>
-                <h3 class="text-muted">No memories found</h3>
-                <p class="text-muted mb-4">
-                    You don't have any photos from @todaysMemories?.FormattedDate yet.
-                    <br>
-                    Try importing some photos first!
-                </p>
-                <a href="/photo-scan" class="btn btn-primary">
-                    <span class="oi oi-magnifying-glass me-2" aria-hidden="true"></span>
-                    Scan for Photos
-                </a>
-            </div>
-        </div>
-    }
-    else
-    {
-        <!-- Memories Display -->
-        <div class="row">
-            <div class="col-12">
-                <!-- Summary -->
-                <div class="alert alert-info mb-4" role="alert">
-                    <span class="oi oi-info me-2" aria-hidden="true"></span>
-                    Found <strong>@todaysMemories.TotalPhotos photos</strong> from @todaysMemories.FormattedDate 
-                    across <strong>@todaysMemories.YearGroups.Count years</strong>
-                </div>
-
-                @foreach (var yearGroup in todaysMemories.YearGroups)
-                {
-                    <!-- Year Header -->
-                    <div class="mb-4">
-                        <div class="d-flex align-items-center mb-3">
-                            <h3 class="mb-0 me-3">
-                                @if (yearGroup.IsCurrentYear)
-                                {
-                                    <span class="badge bg-primary fs-5 py-2 px-3">Today</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary fs-5 py-2 px-3">@yearGroup.Year</span>
-                                }
-                            </h3>
-                            <span class="text-muted">@yearGroup.PhotoCount photo@(yearGroup.PhotoCount == 1 ? "" : "s")</span>
-                        </div>
-
-                        <!-- Photo Grid -->
-                        <div class="row g-2">
-                            @foreach (var photo in yearGroup.Photos.Take(12)) // Limit to 12 photos per year for performance
-                            {
-                                <FaceVault.Components.ImageViewer Photo="photo" ShowTime="true" />
-                            }
-                            
-                            @if (yearGroup.PhotoCount > 12)
-                            {
-                                <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                                    <div class="card border-0 shadow-sm photo-card">
-                                        <div class="photo-container position-relative">
-                                            <div class="card-img-top photo-placeholder d-flex flex-column align-items-center justify-content-center">
-                                                <span class="oi oi-plus display-6 text-muted" aria-hidden="true"></span>
-                                                <small class="text-muted mt-2">+@(yearGroup.PhotoCount - 12) more</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
 </div>
-
-</FaceVault.Components.ErrorBoundary>
-
-<style>
-    .photo-placeholder {
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-radius: 0.375rem;
-    }
-
-    .btn-group .btn {
-        min-width: 2.5rem;
-    }
-
-    .display-1 {
-        font-size: 4rem;
-    }
-</style>

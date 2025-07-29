@@ -2,200 +2,444 @@
 @using FaceVault.Data
 @using FaceVault.Services
 @using Microsoft.EntityFrameworkCore
+@inject FaceVaultDbContext DbContext
+@inject IPathService PathService
+@inject IDatabaseInitializationService DbInitService
+@inject NavigationManager Navigation
+@inject ILogger<DatabaseStatus> Logger
 
 <PageTitle>Database Status - FaceVault</PageTitle>
 
-<h1>Database Status</h1>
+<div class="container-fluid">
+    <h1 class="display-4">Database Status</h1>
+    <p class="lead">Monitor database health and statistics</p>
 
-<div class="row mb-3">
-    <div class="col-md-6">
-        <button class="btn btn-primary" @onclick="RefreshStatus" disabled="@isLoading">
-            @if (isLoading)
-            {
-                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-            }
-            <span class="oi oi-reload" aria-hidden="true"></span> Refresh
-        </button>
-        <button class="btn btn-success ms-2" @onclick="InitializeDatabase">
-            <span class="oi oi-plus" aria-hidden="true"></span> Initialize Database
-        </button>
-        <div class="form-check form-switch d-inline-block ms-3">
-            <input class="form-check-input" type="checkbox" id="autoRefresh" @bind:get="autoRefresh" @bind:set="OnAutoRefreshChanged">
-            <label class="form-check-label" for="autoRefresh">
-                Auto-refresh (@autoRefreshInterval sec)
-            </label>
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <span class="oi oi-x" aria-hidden="true"></span> <strong>Error:</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (isRefreshing && !databaseExists && string.IsNullOrEmpty(databasePath))
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading database status...</span>
+            </div>
+            <p class="mt-3">Loading database status...</p>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-md-6">
+                <!-- Database Information -->
+                <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-hard-drive" aria-hidden="true"></span> Database Information</h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-4">Database Path:</dt>
+                        <dd class="col-sm-8">
+                            <code>@databasePath</code>
+                            @if (databaseExists)
+                            {
+                                <span class="badge bg-success ms-2">Exists</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger ms-2">Not Found</span>
+                            }
+                        </dd>
+                        
+                        <dt class="col-sm-4">Display Path:</dt>
+                        <dd class="col-sm-8"><code>@displayPath</code></dd>
+                        
+                        <dt class="col-sm-4">File Size:</dt>
+                        <dd class="col-sm-8">@fileSizeStr</dd>
+                        
+                        <dt class="col-sm-4">Database Version:</dt>
+                        <dd class="col-sm-8">@databaseVersion</dd>
+                        
+                        <dt class="col-sm-4">Connection Status:</dt>
+                        <dd class="col-sm-8">
+                            @if (isConnected)
+                            {
+                                <span class="badge bg-success">Connected</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Disconnected</span>
+                            }
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Database Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-wrench" aria-hidden="true"></span> Database Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-primary" @onclick="RefreshStatus" disabled="@isRefreshing">
+                            @if (isRefreshing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span class="oi oi-reload" aria-hidden="true"></span> Refresh Status
+                        </button>
+                        
+                        @if (!databaseExists)
+                        {
+                            <button class="btn btn-success" @onclick="CreateDatabase" disabled="@isCreating">
+                                @if (isCreating)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span class="oi oi-plus" aria-hidden="true"></span> Create Database
+                            </button>
+                        }
+                        
+                        <button class="btn btn-outline-secondary" @onclick="OpenDatabaseFolder">
+                            <span class="oi oi-folder" aria-hidden="true"></span> Open Database Folder
+                        </button>
+                    </div>
+                    
+                    @if (!string.IsNullOrEmpty(actionMessage))
+                    {
+                        <div class="alert @(actionSuccess ? "alert-success" : "alert-danger") mt-3" role="alert">
+                            @actionMessage
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <!-- Table Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-list" aria-hidden="true"></span> Table Statistics</h5>
+                </div>
+                <div class="card-body">
+                    @if (tableStats.Any())
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Table</th>
+                                    <th class="text-end">Row Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var stat in tableStats)
+                                {
+                                    <tr>
+                                        <td><code>@stat.TableName</code></td>
+                                        <td class="text-end">@stat.RowCount.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>Total</th>
+                                    <th class="text-end">@tableStats.Sum(s => s.RowCount).ToString("N0")</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No tables found or database not initialized.</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-graph" aria-hidden="true"></span> Quick Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <h4>@totalImages</h4>
+                            <small class="text-muted">Total Images</small>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <h4>@analyzedImages</h4>
+                            <small class="text-muted">Analyzed Images</small>
+                        </div>
+                        <div class="col-6">
+                            <h4>@imagesWithMetadata</h4>
+                            <small class="text-muted">With Metadata</small>
+                        </div>
+                        <div class="col-6">
+                            <h4>@deletedImages</h4>
+                            <small class="text-muted">Deleted Images</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <div class="col-md-6 text-end">
-        <small class="text-muted">Last updated: @lastUpdated.ToString("HH:mm:ss")</small>
+    }
+
+    <!-- Back Button -->
+    <div class="mt-4">
+        <button class="btn btn-outline-secondary" @onclick="GoBack">
+            <span class="oi oi-arrow-left" aria-hidden="true"></span> Back to Home
+        </button>
     </div>
 </div>
 
-@if (isLoading)
-{
-    <div class="text-center">
-        <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <p>Loading database status...</p>
-    </div>
-}
-else
-{
-    <!-- Database Connection Status -->
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Connection Status</h5>
-            <span class="badge bg-@(canConnect ? "success" : "danger")">
-                @(canConnect ? "Connected" : "Disconnected")
-            </span>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <strong>Database File:</strong> @databasePath
-                </div>
-                <div class="col-md-3">
-                    <strong>File Exists:</strong> 
-                    <span class="badge bg-@(databaseExists ? "success" : "warning")">
-                        @(databaseExists ? "Yes" : "No")
-                    </span>
-                </div>
-                <div class="col-md-3">
-                    <strong>Size:</strong> @databaseSizeFormatted
-                </div>
-            </div>
-            @if (!string.IsNullOrEmpty(connectionError))
-            {
-                <div class="alert alert-danger mt-2">
-                    <strong>Connection Error:</strong> @connectionError
-                </div>
-            }
-        </div>
-    </div>
+@code {
+    private string databasePath = "";
+    private string displayPath = "";
+    private bool databaseExists = false;
+    private string fileSizeStr = "N/A";
+    private int databaseVersion = 0;
+    private bool isConnected = false;
+    
+    private bool isRefreshing = false;
+    private bool isCreating = false;
+    private string actionMessage = "";
+    private bool actionSuccess = false;
+    private string errorMessage = "";
+    
+    private List<TableStatistic> tableStats = new();
+    private int totalImages = 0;
+    private int analyzedImages = 0;
+    private int imagesWithMetadata = 0;
+    private int deletedImages = 0;
 
-    <!-- Table Statistics -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0">Table Statistics</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                @foreach (var table in tableCounts.OrderByDescending(t => t.Value))
+    public class TableStatistic
+    {
+        public string TableName { get; set; } = "";
+        public int RowCount { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // SHOW LOADING STATE IMMEDIATELY!
+        isRefreshing = true;
+        StateHasChanged();
+        
+        // Small delay to ensure UI shows loading state
+        await Task.Delay(50);
+        
+        // Now do the actual work
+        await RefreshStatus();
+    }
+
+    private async Task RefreshStatus()
+    {
+        try
+        {
+            isRefreshing = true;
+            actionMessage = "";
+            errorMessage = "";
+            StateHasChanged();
+
+            // Get database path - with error handling
+            try
+            {
+                databasePath = PathService.GetDatabasePath();
+                displayPath = PathService.GetDisplayPath(databasePath);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error getting database path");
+                errorMessage = $"Unable to determine database path: {ex.Message}";
+                return;
+            }
+            
+            // Check if database exists - with error handling
+            try
+            {
+                databaseExists = File.Exists(databasePath);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error checking database file");
+                errorMessage = $"Unable to check database file: {ex.Message}";
+                databaseExists = false;
+            }
+            
+            if (databaseExists)
+            {
+                // Get file size
+                var fileInfo = new FileInfo(databasePath);
+                fileSizeStr = FormatFileSize(fileInfo.Length);
+                
+                // Test connection
+                try
                 {
-                    <div class="col-lg-2 col-md-3 col-sm-4 mb-3">
-                        <div class="card text-center @GetCardClass(table.Key)">
-                            <div class="card-body">
-                                <h4 class="@GetTextClass(table.Key)">@table.Value.ToString("N0")</h4>
-                                <p class="card-text small">@table.Key</p>
-                            </div>
-                        </div>
-                    </div>
+                    isConnected = await DbContext.Database.CanConnectAsync();
+                    
+                    if (isConnected)
+                    {
+                        // Get database version
+                        var connectionString = DbContext.Database.GetConnectionString();
+                        databaseVersion = await DbInitService.GetCurrentVersionAsync(connectionString!);
+                        
+                        // Get table statistics
+                        await LoadTableStatistics();
+                        
+                        // Get quick stats
+                        await LoadQuickStats();
+                    }
                 }
-            </div>
-        </div>
-    </div>
-
-    <!-- Database Schema Status -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0">Schema Status</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-3">
-                    <strong>Database Created:</strong>
-                    <span class="badge bg-@(databaseExists ? "success" : "warning")">
-                        @(databaseExists ? "Yes" : "No")
-                    </span>
-                </div>
-                <div class="col-md-3">
-                    <strong>Migrations Applied:</strong>
-                    <span class="badge bg-@(migrationsApplied ? "success" : "warning")">
-                        @(migrationsApplied ? "Yes" : "No")
-                    </span>
-                </div>
-                <div class="col-md-3">
-                    <strong>Pending Migrations:</strong>
-                    <span class="badge bg-@(pendingMigrations.Any() ? "warning" : "success")">
-                        @pendingMigrations.Count()
-                    </span>
-                </div>
-                <div class="col-md-3">
-                    <strong>Schema Version:</strong>
-                    <span class="badge bg-info">@schemaVersion</span>
-                </div>
-            </div>
-
-            @if (pendingMigrations.Any())
-            {
-                <div class="alert alert-warning mt-3">
-                    <h6>Pending Migrations:</h6>
-                    <ul class="mb-0">
-                        @foreach (var migration in pendingMigrations)
-                        {
-                            <li>@migration</li>
-                        }
-                    </ul>
-                    <button class="btn btn-warning btn-sm mt-2" @onclick="ApplyMigrations">
-                        Apply Migrations
-                    </button>
-                </div>
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error connecting to database");
+                    isConnected = false;
+                    errorMessage = $"Database connection failed: {ex.Message}";
+                }
             }
-        </div>
-    </div>
+            else
+            {
+                fileSizeStr = "N/A";
+                isConnected = false;
+                tableStats.Clear();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error refreshing database status");
+            if (string.IsNullOrEmpty(errorMessage))
+            {
+                errorMessage = $"Failed to refresh database status: {ex.Message}";
+            }
+            actionMessage = "";
+            actionSuccess = false;
+        }
+        finally
+        {
+            isRefreshing = false;
+            StateHasChanged();
+        }
+    }
 
-    <!-- Performance Metrics -->
-    <div class="card mb-3">
-        <div class="card-header">
-            <h5 class="mb-0">Performance Metrics</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4">
-                    <strong>Last Query Time:</strong> @lastQueryTime ms
-                </div>
-                <div class="col-md-4">
-                    <strong>Connection Pool:</strong> Active
-                </div>
-                <div class="col-md-4">
-                    <strong>Status Check Time:</strong> @statusCheckTime ms
-                </div>
-            </div>
-        </div>
-    </div>
+    private async Task LoadTableStatistics()
+    {
+        try
+        {
+            tableStats.Clear();
+            
+            // Get row counts for each table
+            var tables = new[] { "tbl_images", "tbl_image_metadata", "tbl_image_analysis", "tbl_app_settings", "tbl_version" };
+            
+            foreach (var table in tables)
+            {
+                try
+                {
+                    var count = await DbContext.Database.SqlQuery<int>($"SELECT COUNT(*) AS Value FROM {table}").FirstOrDefaultAsync();
+                    tableStats.Add(new TableStatistic { TableName = table, RowCount = count });
+                }
+                catch
+                {
+                    // Table might not exist
+                    tableStats.Add(new TableStatistic { TableName = table, RowCount = 0 });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading table statistics");
+        }
+    }
 
-    <!-- Quick Actions -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Quick Actions</h5>
-        </div>
-        <div class="card-body">
-            <div class="btn-group" role="group">
-                <button class="btn btn-outline-primary" @onclick="TestConnection">
-                    <span class="oi oi-pulse" aria-hidden="true"></span> Test Connection
-                </button>
-                <button class="btn btn-outline-info" @onclick="ViewSchema">
-                    <span class="oi oi-list" aria-hidden="true"></span> View Schema
-                </button>
-                <button class="btn btn-outline-success" @onclick="SeedTestData" disabled="@(!canConnect)">
-                    <span class="oi oi-data-transfer-download" aria-hidden="true"></span> Seed Test Data
-                </button>
-                <button class="btn btn-outline-warning" @onclick="RepairDatabase" disabled="@(!databaseExists)">
-                    <span class="oi oi-wrench" aria-hidden="true"></span> Repair Database
-                </button>
-                <button class="btn btn-outline-secondary" @onclick="ShowCountReport" disabled="@(!canConnect)">
-                    <span class="oi oi-bug" aria-hidden="true"></span> Debug Count Report
-                </button>
-            </div>
-        </div>
-    </div>
-}
+    private async Task LoadQuickStats()
+    {
+        try
+        {
+            totalImages = await DbContext.tbl_images.CountAsync();
+            analyzedImages = await DbContext.tbl_image_analysis.CountAsync();
+            imagesWithMetadata = await DbContext.tbl_image_metadata.CountAsync();
+            deletedImages = await DbContext.tbl_images.CountAsync(i => i.IsDeleted == 1);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading quick stats");
+        }
+    }
 
-@if (!string.IsNullOrEmpty(statusMessage))
-{
-    <div class="alert alert-@statusMessageType alert-dismissible fade show mt-3" role="alert">
-        @statusMessage
-        <button type="button" class="btn-close" @onclick="ClearStatusMessage"></button>
-    </div>
+    private async Task CreateDatabase()
+    {
+        try
+        {
+            isCreating = true;
+            actionMessage = "";
+            StateHasChanged();
+
+            var connectionString = DbContext.Database.GetConnectionString();
+            var success = await DbInitService.InitializeDatabaseAsync(connectionString!);
+            
+            if (success)
+            {
+                actionMessage = "Database created successfully!";
+                actionSuccess = true;
+                await RefreshStatus();
+            }
+            else
+            {
+                actionMessage = "Failed to create database. Check logs for details.";
+                actionSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating database");
+            actionMessage = $"Error: {ex.Message}";
+            actionSuccess = false;
+        }
+        finally
+        {
+            isCreating = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenDatabaseFolder()
+    {
+        try
+        {
+            var dbDirectory = Path.GetDirectoryName(databasePath);
+            if (!string.IsNullOrEmpty(dbDirectory))
+            {
+                System.Diagnostics.Process.Start("explorer.exe", dbDirectory);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error opening database folder");
+            actionMessage = $"Error opening folder: {ex.Message}";
+            actionSuccess = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
 }

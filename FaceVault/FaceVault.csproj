@@ -19,15 +19,38 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="Python\screenshots.py">
+    <AdditionalFiles Include="Python\heic_converter.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AdditionalFiles>
-    <AdditionalFiles Include="Python\heic_converter.py">
+    <AdditionalFiles Include="Python\image_analysis_module.py">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AdditionalFiles>
     <AdditionalFiles Include="requirements.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AdditionalFiles>
+    <AdditionalFiles Include="Python\requirements.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Database\*.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Database\README.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Database\SCHEMA.md">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Exclude backup directory from build -->
+    <Compile Remove="Backup_RemovedFiles\**" />
+    <Content Remove="Backup_RemovedFiles\**" />
+    <EmbeddedResource Remove="Backup_RemovedFiles\**" />
+    <None Remove="Backup_RemovedFiles\**" />
   </ItemGroup>
 
 </Project>

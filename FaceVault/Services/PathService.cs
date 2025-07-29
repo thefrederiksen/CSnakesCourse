@@ -11,6 +11,8 @@ public interface IPathService
     string GetSettingsDirectory();
     string GetTempDirectory();
     void EnsureDirectoriesExist();
+    string GetDisplayPath(string fullPath);
+    bool MigrateDatabaseIfNeeded();
 }
 
 public class PathService : IPathService
@@ -35,7 +37,7 @@ public class PathService : IPathService
         _settingsDirectory = Path.Combine(_userDataDirectory, "Settings");
         _tempDirectory = Path.Combine(_userDataDirectory, "Temp");
         
-        Logger.Info($"PathService initialized with user data directory: {_userDataDirectory}");
+        Logger.Debug($"PathService initialized with user data directory: {_userDataDirectory}");
     }
 
     public string GetUserDataDirectory() => _userDataDirectory;
@@ -103,7 +105,7 @@ public class PathService : IPathService
             // If new database already exists, no migration needed
             if (File.Exists(newDatabasePath))
             {
-                Logger.Info("Database already exists in user data directory");
+                Logger.Debug("Database already exists in user data directory");
                 return true;
             }
 
@@ -129,7 +131,7 @@ public class PathService : IPathService
                 return true;
             }
 
-            Logger.Info("No existing database found - will create new database in user data directory");
+            Logger.Debug("No existing database found - will create new database in user data directory");
             return true;
         }
         catch (Exception ex)
