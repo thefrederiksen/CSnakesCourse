@@ -1,12 +1,6 @@
-# Core face recognition and image processing
-face_recognition==1.3.0
-opencv-python==4.8.1.78
+# Image processing
 Pillow==10.0.0
-numpy==1.24.3
-
-# Machine learning and clustering
-scikit-learn==1.3.0
-scipy==1.11.1
+numpy==1.24.3  # Used in tests, dependency for other packages
 
 # Testing framework
 pytest==7.4.0
@@ -21,3 +15,6 @@ mypy==1.5.1
 # Utilities
 python-dateutil==2.8.2
 tqdm==4.65.0
+
+openai>=0.27.0    # OpenAI API client
+pydantic>=1.10.0  # Data validation & settings management

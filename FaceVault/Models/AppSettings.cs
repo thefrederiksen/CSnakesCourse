@@ -78,7 +78,7 @@ public class AppSettings
     public string? LLMApiEndpoint { get; set; }
     
     [MaxLength(100)]
-    public string? LLMModel { get; set; } = "gpt-3.5-turbo";
+    public string? LLMModel { get; set; } = "gpt-4o-mini";
 
     public bool EnableVectorSearch { get; set; } = true;
     public int LLMMaxTokens { get; set; } = 1000;

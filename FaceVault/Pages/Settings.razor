@@ -84,8 +84,8 @@ else
                                 <input class="form-check-input" type="checkbox" id="enableLLMQuery" 
                                        @bind="settings.EnableLLMQuery">
                                 <label class="form-check-label" for="enableLLMQuery">
-                                    <strong>LLM Query</strong>
-                                    <br><small class="text-muted">Ask questions about your photos</small>
+                                    <strong>AI Image Analysis</strong>
+                                    <br><small class="text-muted">Analyze and categorize photos using AI</small>
                                 </label>
                             </div>
                         </div>
@@ -151,11 +151,13 @@ else
                                 <div class="mb-3">
                                     <label for="llmProvider" class="form-label">AI Provider</label>
                                     <select class="form-select" id="llmProvider" @bind:get="settings.LLMProvider" @bind:set="OnProviderChanged">
-                                        <option value="OpenAI">OpenAI (GPT)</option>
-                                        <option value="Claude">Anthropic Claude</option>
+                                        <option value="OpenAI">OpenAI (GPT-4o)</option>
                                         <option value="AzureOpenAI">Azure OpenAI</option>
-                                        <option value="Local">Local Model</option>
-                                        <option value="Custom">Custom Provider</option>
+                                        <option value="GoogleAI">Google AI (Gemini)</option>
+                                        <option value="Groq">Groq Cloud</option>
+                                        <option value="Together">Together AI</option>
+                                        <option value="Local">Local Model (LM Studio/Ollama)</option>
+                                        <option value="Custom">Custom OpenAI-Compatible</option>
                                     </select>
                                 </div>
                             </div>
@@ -178,6 +180,15 @@ else
                             <input type="url" class="form-control" id="llmApiEndpoint" 
                                    @bind="settings.LLMApiEndpoint" placeholder="@GetApiEndpointPlaceholder()">
                             <div class="form-text">@GetApiEndpointDescription()</div>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <strong><span class="oi oi-info" aria-hidden="true"></span> Provider Requirements:</strong><br>
+                            All listed providers support:
+                            <ul class="mb-0">
+                                <li>Vision/Image analysis capabilities</li>
+                                <li>Structured JSON outputs for metadata extraction</li>
+                                <li>OpenAI-compatible API format</li>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -363,10 +374,17 @@ else
         {
             settings = await SettingsService.GetSettingsAsync();
             
-            // Pre-populate API endpoint if provider is set but endpoint is empty
-            if (!string.IsNullOrEmpty(settings.LLMProvider) && string.IsNullOrEmpty(settings.LLMApiEndpoint))
+            // Pre-populate API endpoint and model if provider is set but they are empty
+            if (!string.IsNullOrEmpty(settings.LLMProvider))
             {
-                settings.LLMApiEndpoint = GetDefaultApiEndpoint(settings.LLMProvider);
+                if (string.IsNullOrEmpty(settings.LLMApiEndpoint))
+                {
+                    settings.LLMApiEndpoint = GetDefaultApiEndpoint(settings.LLMProvider);
+                }
+                if (string.IsNullOrEmpty(settings.LLMModel))
+                {
+                    settings.LLMModel = GetDefaultModel(settings.LLMProvider);
+                }
             }
         }
         catch (Exception ex)
@@ -507,8 +525,9 @@ else
     {
         settings.LLMProvider = newProvider ?? "";
         
-        // Pre-populate API endpoint based on provider
+        // Pre-populate API endpoint and model based on provider
         settings.LLMApiEndpoint = GetDefaultApiEndpoint(newProvider ?? "");
+        settings.LLMModel = GetDefaultModel(newProvider ?? "");
         
         StateHasChanged();
     }
@@ -518,11 +537,28 @@ else
         return provider switch
         {
             "OpenAI" => "https://api.openai.com/v1",
-            "Claude" => "https://api.anthropic.com/v1",
             "AzureOpenAI" => "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
+            "GoogleAI" => "https://generativelanguage.googleapis.com/v1beta",
+            "Groq" => "https://api.groq.com/openai/v1",
+            "Together" => "https://api.together.xyz/v1",
             "Local" => "http://localhost:1234/v1",
             "Custom" => "",
             _ => ""
+        };
+    }
+    
+    private string GetDefaultModel(string provider)
+    {
+        return provider switch
+        {
+            "OpenAI" => "gpt-4o-mini",
+            "AzureOpenAI" => "gpt-4o-mini",
+            "GoogleAI" => "gemini-1.5-flash-latest",
+            "Groq" => "llava-v1.5-7b-4096-preview",
+            "Together" => "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo",
+            "Local" => "llava-v1.6-mistral-7b",
+            "Custom" => "",
+            _ => "gpt-4o-mini"
         };
     }
 
@@ -531,8 +567,10 @@ else
         return settings.LLMProvider switch
         {
             "OpenAI" => "https://api.openai.com/v1",
-            "Claude" => "https://api.anthropic.com/v1", 
             "AzureOpenAI" => "https://your-resource.openai.azure.com/openai/deployments/your-deployment",
+            "GoogleAI" => "https://generativelanguage.googleapis.com/v1beta",
+            "Groq" => "https://api.groq.com/openai/v1",
+            "Together" => "https://api.together.xyz/v1",
             "Local" => "http://localhost:1234/v1",
             "Custom" => "https://your-custom-api.com/v1",
             _ => "Enter API endpoint URL..."
@@ -543,11 +581,13 @@ else
     {
         return settings.LLMProvider switch
         {
-            "OpenAI" => "Official OpenAI API endpoint (pre-filled)",
-            "Claude" => "Official Anthropic Claude API endpoint (pre-filled)",
+            "OpenAI" => "Official OpenAI API endpoint (pre-filled) - Supports GPT-4o models with vision",
             "AzureOpenAI" => "Your Azure OpenAI resource endpoint - update with your resource and deployment names",
-            "Local" => "Local model server endpoint (e.g., LM Studio, Ollama)",
-            "Custom" => "Enter your custom API endpoint URL",
+            "GoogleAI" => "Google AI Studio endpoint - Gemini models with vision capabilities",
+            "Groq" => "Groq Cloud API endpoint - Fast inference with LLaVA vision model",
+            "Together" => "Together AI endpoint - Llama 3.2 Vision and other multimodal models",
+            "Local" => "Local model server endpoint (e.g., LM Studio with LLaVA, Ollama with vision models)",
+            "Custom" => "Enter your custom OpenAI-compatible API endpoint that supports vision",
             _ => "API endpoint for your selected provider"
         };
     }

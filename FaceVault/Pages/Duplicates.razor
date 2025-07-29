@@ -1,6 +1,7 @@
 @page "/duplicates"
 @using FaceVault.Services
 @using FaceVault.Models
+@using System.IO
 
 <PageTitle>Clean Up Duplicates - FaceVault</PageTitle>
 
@@ -109,40 +110,79 @@
                             <strong>@group.Count identical photos</strong> - Will save @group.WastedSpaceFormatted
                         </span>
                         <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteDuplicatesInGroup(group.Hash)">
-                            <span class="oi oi-trash" aria-hidden="true"></span> Delete @deleteImages.Count Duplicates
+                            <span class="oi oi-trash" aria-hidden="true"></span> 
+                            @if (deleteImages.Count == 1)
+                            {
+                                <text>Delete this Duplicate</text>
+                            }
+                            else
+                            {
+                                <text>Delete @deleteImages.Count Duplicates</text>
+                            }
                         </button>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <!-- Keep This One -->
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="card border-success">
                                 <div class="card-header bg-success text-white text-center py-2">
                                     <strong><span class="oi oi-circle-check" aria-hidden="true"></span> ✅ KEEP THIS ONE</strong>
                                 </div>
-                                <div class="card-body p-0">
-                                    <FaceVault.Components.ImageViewer Photo="keepImage" ShowTime="false" />
+                                <div class="card-body p-3">
+                                    <div class="duplicate-image-container mb-2">
+                                        <FaceVault.Components.ImageThumbnail Photo="keepImage" />
+                                    </div>
+                                    <div class="path-info">
+                                        <div class="text-muted">
+                                            <small class="d-block mb-1">
+                                                <span class="oi oi-file" aria-hidden="true"></span>
+                                                <strong>@Path.GetFileName(keepImage.FilePath)</strong>
+                                            </small>
+                                            <small class="d-block text-truncate" title="@keepImage.FilePath">
+                                                <span class="oi oi-folder" aria-hidden="true"></span>
+                                                @Path.GetDirectoryName(keepImage.FilePath)
+                                            </small>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Delete These -->
-                        <div class="col-md-8">
+                        <div class="col-md-6">
                             <div class="card border-danger">
                                 <div class="card-header bg-danger text-white text-center py-2">
-                                    <strong><span class="oi oi-trash" aria-hidden="true"></span> 🗑️ DELETE THESE (@deleteImages.Count duplicates)</strong>
+                                    @if (deleteImages.Count == 1)
+                                    {
+                                        <strong><span class="oi oi-trash" aria-hidden="true"></span> 🗑️ DELETE THIS</strong>
+                                    }
+                                    else
+                                    {
+                                        <strong><span class="oi oi-trash" aria-hidden="true"></span> 🗑️ DELETE THESE (@deleteImages.Count duplicates)</strong>
+                                    }
                                 </div>
-                                <div class="card-body p-2">
-                                    <div class="row">
-                                        @foreach (var deleteImage in deleteImages.Take(3))
+                                <div class="card-body p-3">
+                                    <div class="duplicates-list">
+                                        @foreach (var deleteImage in deleteImages)
                                         {
-                                            <FaceVault.Components.ImageViewer Photo="deleteImage" ShowTime="false" />
-                                        }
-                                        @if (deleteImages.Count > 3)
-                                        {
-                                            <div class="col-md-4 d-flex align-items-center justify-content-center">
-                                                <span class="text-muted">... and @(deleteImages.Count - 3) more</span>
+                                            <div class="duplicate-item mb-3">
+                                                <div class="duplicate-image-container mb-2">
+                                                    <FaceVault.Components.ImageThumbnail Photo="deleteImage" />
+                                                </div>
+                                                <div class="path-info">
+                                                    <div class="text-muted">
+                                                        <small class="d-block mb-1">
+                                                            <span class="oi oi-file" aria-hidden="true"></span>
+                                                            <strong>@Path.GetFileName(deleteImage.FilePath)</strong>
+                                                        </small>
+                                                        <small class="d-block text-truncate" title="@deleteImage.FilePath">
+                                                            <span class="oi oi-folder" aria-hidden="true"></span>
+                                                            @Path.GetDirectoryName(deleteImage.FilePath)
+                                                        </small>
+                                                    </div>
+                                                </div>
                                             </div>
                                         }
                                     </div>
@@ -172,3 +212,73 @@
 </div>
 
 </FaceVault.Components.ErrorBoundary>
+
+<style>
+    .duplicate-image-container {
+        width: 100%;
+        height: 200px;
+        overflow: hidden;
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #f8f9fa;
+    }
+
+    .duplicate-image-container img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+
+    .path-info {
+        word-break: break-all;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        padding-top: 0.5rem;
+        border-top: 1px solid #dee2e6;
+    }
+    
+    .path-info small {
+        margin-bottom: 0.25rem;
+    }
+    
+    .path-info .oi {
+        margin-right: 0.25rem;
+        color: #6c757d;
+    }
+
+    .duplicates-list {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .duplicate-item {
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 1rem;
+    }
+
+    .duplicate-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    /* Custom scrollbar for duplicates list */
+    .duplicates-list::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .duplicates-list::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .duplicates-list::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .duplicates-list::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+</style>
