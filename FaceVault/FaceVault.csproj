@@ -6,7 +6,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <UseWindowsForms>true</UseWindowsForms>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
+    <!-- Set to true to use WinForms startup, false for console -->
+    <UseWinFormsStartup>true</UseWinFormsStartup>
+  </PropertyGroup>
+  
+  <PropertyGroup Condition="'$(UseWinFormsStartup)' == 'true'">
+    <DefineConstants>$(DefineConstants);WINFORMS_APP</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
