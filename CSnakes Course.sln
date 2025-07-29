@@ -33,9 +33,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "13. Generators Sample", "Ge
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PythonTextAnalytics", "PythonTextAnalytics\PythonTextAnalytics.csproj", "{51454719-647B-49C0-8B00-B2271744BA0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceVault", "FaceVault\FaceVault.csproj", "{7E20BADA-5FD9-47FD-BD7F-07829AE98284}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyPhotoHelper", "MyPhotoHelper\MyPhotoHelper.csproj", "{7E20BADA-5FD9-47FD-BD7F-07829AE98284}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceVault.Tests", "FaceVault.Tests\FaceVault.Tests.csproj", "{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyPhotoHelper.Tests", "MyPhotoHelper.Tests\MyPhotoHelper.Tests.csproj", "{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloWorld.Tests", "HelloWorld.Tests\HelloWorld.Tests.csproj", "{0BE81051-F97E-41A5-99A8-F70145EBBC81}"
 EndProject

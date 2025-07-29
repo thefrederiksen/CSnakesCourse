@@ -1,1 +1,0 @@
-# FaceVault Python modules package
