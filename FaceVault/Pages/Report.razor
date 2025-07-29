@@ -1,0 +1,526 @@
+@page "/report"
+@using FaceVault.Data
+@using FaceVault.Models
+@using FaceVault.Services
+@using Microsoft.EntityFrameworkCore
+@inject FaceVaultDbContext DbContext
+@inject IPathService PathService
+@inject NavigationManager Navigation
+@inject ILogger<Report> Logger
+
+<PageTitle>Library Report - FaceVault</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="display-4">Library Report</h1>
+    <p class="lead">Comprehensive analysis of your photo library</p>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <span class="oi oi-x" aria-hidden="true"></span> <strong>Error:</strong> @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty"></button>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border spinner-border-xl text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading report data...</span>
+            </div>
+            <h4>Generating Your Report</h4>
+            <p class="text-muted">
+                <span class="d-block">Loading image statistics...</span>
+                <span class="d-block">Analyzing AI results...</span>
+                <span class="d-block">Calculating duplicates...</span>
+            </p>
+        </div>
+    }
+    else
+    {
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Images</h5>
+                        <h2 class="text-primary">@totalImages.ToString("N0")</h2>
+                        <small class="text-muted">In library</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">AI Analyzed</h5>
+                        <h2 class="text-success">@analyzedImages.ToString("N0")</h2>
+                        <small class="text-muted">@percentAnalyzed% complete</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Duplicates</h5>
+                        <h2 class="text-warning">@duplicateCount.ToString("N0")</h2>
+                        <small class="text-muted">Files found</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Storage Used</h5>
+                        <h2 class="text-info">@totalSizeStr</h2>
+                        <small class="text-muted">Total size</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Analysis Summary -->
+        @if (categoryStats.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-eye" aria-hidden="true"></span> AI Analysis Categories</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var category in categoryStats.OrderByDescending(c => c.Count))
+                        {
+                            <div class="col-md-4 mb-3">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6>@category.Category</h6>
+                                    <span class="badge bg-primary">@category.Count</span>
+                                </div>
+                                <div class="progress mb-2">
+                                    @{
+                                        var percent = totalImages > 0 ? (double)category.Count / totalImages * 100 : 0;
+                                    }
+                                    <div class="progress-bar" role="progressbar" style="width: @percent%"></div>
+                                </div>
+                                <small class="text-muted">@percent.ToString("F1")% of total</small>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- AI Analysis Samples -->
+        @if (aiSamples.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0"><span class="oi oi-image" aria-hidden="true"></span> AI Analysis Samples</h5>
+                        <small class="text-muted">Recent AI analysis results to verify functionality</small>
+                    </div>
+                    <div>
+                        <small class="text-muted">
+                            Page @(currentAiPage + 1) of @((allAiSamples.Count + aiSamplesPerPage - 1) / aiSamplesPerPage)
+                        </small>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @foreach (var sample in aiSamples)
+                    {
+                        <div class="card mb-3 border-primary">
+                            <div class="card-header bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0" title="@sample.FileName">
+                                        <span class="oi oi-file" aria-hidden="true"></span> @sample.FileName
+                                    </h6>
+                                    <span class="badge bg-info">@sample.Category</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12 mb-2">
+                                        <small class="text-muted">
+                                            <strong>Model:</strong> @sample.AIModel | 
+                                            <strong>Analyzed:</strong> @sample.AnalyzedAt?.ToString("g")
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        @if (!string.IsNullOrEmpty(sample.Description))
+                                        {
+                                            <div class="mb-3">
+                                                <strong>AI Description:</strong>
+                                                <div class="border rounded p-2 bg-light">
+                                                    <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word;">@sample.Description</pre>
+                                                </div>
+                                            </div>
+                                        }
+                                        
+                                        @if (!string.IsNullOrEmpty(sample.JsonResponse))
+                                        {
+                                            <div class="mt-3">
+                                                <strong>AI Response Data:</strong>
+                                                <div class="border rounded p-2 bg-light mt-1">
+                                                    <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem; max-height: 300px; overflow-y: auto;">@sample.JsonResponse</pre>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="mt-3">
+                                                <div class="alert alert-warning mb-0">
+                                                    <small>No JSON response data available (analyze again to capture full response)</small>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <button class="btn btn-outline-primary" @onclick="PreviousAiPage" disabled="@(currentAiPage == 0)">
+                            <span class="oi oi-arrow-left" aria-hidden="true"></span> Previous
+                        </button>
+                        <span class="text-muted">
+                            Showing @(currentAiPage * aiSamplesPerPage + 1) - @Math.Min((currentAiPage + 1) * aiSamplesPerPage, allAiSamples.Count) of @allAiSamples.Count
+                        </span>
+                        <button class="btn btn-outline-primary" @onclick="NextAiPage" 
+                                disabled="@((currentAiPage + 1) * aiSamplesPerPage >= allAiSamples.Count)">
+                            Next <span class="oi oi-arrow-right" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (analyzedImages == 0)
+        {
+            <div class="alert alert-info" role="alert">
+                <h5 class="alert-heading"><span class="oi oi-info" aria-hidden="true"></span> No AI Analysis Yet</h5>
+                <p>No images have been analyzed with AI yet. Visit the <a href="/database-scan" class="alert-link">AI Analysis</a> page to start analyzing your images.</p>
+            </div>
+        }
+
+        <!-- Duplicate Report -->
+        @if (duplicateGroups.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-layers" aria-hidden="true"></span> Duplicate Files</h5>
+                </div>
+                <div class="card-body">
+                    <p>Found @duplicateGroups.Count groups of duplicate files:</p>
+                    <div class="accordion" id="duplicatesAccordion">
+                        @{
+                            int groupIndex = 0;
+                        }
+                        @foreach (var group in duplicateGroups.Take(10))
+                        {
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading@(groupIndex)">
+                                    <button class="accordion-button collapsed" type="button" 
+                                            data-bs-toggle="collapse" data-bs-target="#collapse@(groupIndex)">
+                                        <span class="badge bg-warning me-2">@group.Files.Count files</span>
+                                        Hash: @group.Hash.Substring(0, 12)...
+                                        <span class="ms-auto me-2 text-muted">@FormatFileSize(group.FileSize)</span>
+                                    </button>
+                                </h2>
+                                <div id="collapse@(groupIndex)" class="accordion-collapse collapse" 
+                                     data-bs-parent="#duplicatesAccordion">
+                                    <div class="accordion-body">
+                                        <ul class="list-unstyled">
+                                            @foreach (var file in group.Files)
+                                            {
+                                                <li class="mb-1">
+                                                    <span class="oi oi-file" aria-hidden="true"></span>
+                                                    @file.RelativePath
+                                                    <small class="text-muted">(@FormatFileSize(file.FileSizeBytes))</small>
+                                                </li>
+                                            }
+                                        </ul>
+                                        <p class="mt-2 mb-0">
+                                            <strong>Potential savings:</strong> 
+                                            @FormatFileSize(group.FileSize * (group.Files.Count - 1))
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            groupIndex++;
+                        }
+                    </div>
+                    @if (duplicateGroups.Count > 10)
+                    {
+                        <p class="text-center text-muted mt-3">
+                            Showing 10 of @duplicateGroups.Count duplicate groups
+                        </p>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- File Type Distribution -->
+        @if (fileTypeStats.Any())
+        {
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><span class="oi oi-pie-chart" aria-hidden="true"></span> File Type Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        @foreach (var fileType in fileTypeStats.OrderByDescending(f => f.Count))
+                        {
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center">
+                                    <h6>@fileType.Extension.ToUpper()</h6>
+                                    <h4 class="text-primary">@fileType.Count.ToString("N0")</h4>
+                                    <small class="text-muted">@fileType.Percentage.ToString("F1")%</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-between mb-4">
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <span class="oi oi-arrow-left" aria-hidden="true"></span> Back to Home
+            </button>
+            <button class="btn btn-primary" @onclick="RefreshReport" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                }
+                <span class="oi oi-reload" aria-hidden="true"></span> Refresh Report
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isLoading = true;
+    private string errorMessage = "";
+    
+    // Summary stats
+    private int totalImages = 0;
+    private int analyzedImages = 0;
+    private int percentAnalyzed = 0;
+    private int duplicateCount = 0;
+    private long totalSize = 0;
+    private string totalSizeStr = "0 B";
+    
+    // Category statistics
+    private List<CategoryStat> categoryStats = new();
+    
+    // AI samples
+    private List<AISample> aiSamples = new();
+    private List<AISample> allAiSamples = new();
+    private int currentAiPage = 0;
+    private int aiSamplesPerPage = 6;
+    
+    // Duplicate groups
+    private List<DuplicateGroup> duplicateGroups = new();
+    
+    // File type statistics
+    private List<FileTypeStat> fileTypeStats = new();
+
+    private class CategoryStat
+    {
+        public string Category { get; set; } = "";
+        public int Count { get; set; }
+    }
+
+    private class AISample
+    {
+        public string FileName { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string AIModel { get; set; } = "";
+        public DateTime? AnalyzedAt { get; set; }
+        public string JsonResponse { get; set; } = "";
+    }
+
+    private class DuplicateGroup
+    {
+        public string Hash { get; set; } = "";
+        public long FileSize { get; set; }
+        public List<tbl_images> Files { get; set; } = new();
+    }
+
+    private class FileTypeStat
+    {
+        public string Extension { get; set; } = "";
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // IMMEDIATE FEEDBACK - SHOW LOADING RIGHT NOW!
+        isLoading = true;
+        errorMessage = "";
+        StateHasChanged();
+        
+        // Ensure UI updates
+        await Task.Delay(100);
+        
+        // Now load the data
+        await LoadReportData();
+    }
+
+    private async Task LoadReportData()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = "";
+            StateHasChanged();
+
+            // Load basic statistics
+            totalImages = await DbContext.tbl_images.CountAsync(i => i.IsDeleted == 0);
+            
+            // Load AI analysis statistics
+            analyzedImages = await DbContext.tbl_image_analysis.CountAsync();
+            percentAnalyzed = totalImages > 0 ? (analyzedImages * 100 / totalImages) : 0;
+            
+            // Load category statistics
+            categoryStats = await DbContext.tbl_image_analysis
+                .GroupBy(a => a.ImageCategory ?? "Unknown")
+                .Select(g => new CategoryStat 
+                { 
+                    Category = g.Key, 
+                    Count = g.Count() 
+                })
+                .ToListAsync();
+            
+            // Load ALL AI analysis samples
+            allAiSamples = await DbContext.tbl_image_analysis
+                .Join(DbContext.tbl_images,
+                    analysis => analysis.ImageId,
+                    image => image.ImageId,
+                    (analysis, image) => new AISample
+                    {
+                        FileName = image.FileName,
+                        Category = analysis.ImageCategory ?? "Unknown",
+                        Description = analysis.AIDescription ?? "",
+                        AIModel = analysis.AIModelUsed ?? "Unknown",
+                        AnalyzedAt = analysis.AIAnalyzedAt,
+                        JsonResponse = analysis.AIAnalysisJson ?? ""
+                    })
+                .OrderByDescending(s => s.AnalyzedAt)
+                .ToListAsync();
+            
+            // Set initial page of samples
+            currentAiPage = 0;
+            UpdateAiSamplesPage();
+            
+            // Load duplicate statistics
+            var duplicates = await DbContext.tbl_images
+                .Where(i => i.IsDeleted == 0 && !string.IsNullOrEmpty(i.FileHash))
+                .GroupBy(i => i.FileHash)
+                .Where(g => g.Count() > 1)
+                .Select(g => new DuplicateGroup
+                {
+                    Hash = g.Key!,
+                    FileSize = g.First().FileSizeBytes,
+                    Files = g.ToList()
+                })
+                .ToListAsync();
+            
+            duplicateGroups = duplicates;
+            duplicateCount = duplicates.Sum(g => g.Files.Count - 1); // Don't count the original
+            
+            // Calculate total size
+            totalSize = await DbContext.tbl_images
+                .Where(i => i.IsDeleted == 0)
+                .SumAsync(i => (long)i.FileSizeBytes);
+            totalSizeStr = FormatFileSize(totalSize);
+            
+            // Load file type statistics
+            var extensions = await DbContext.tbl_images
+                .Where(i => i.IsDeleted == 0 && !string.IsNullOrEmpty(i.FileName))
+                .Select(i => Path.GetExtension(i.FileName).ToLower())
+                .ToListAsync();
+            
+            fileTypeStats = extensions
+                .GroupBy(ext => string.IsNullOrEmpty(ext) ? ".unknown" : ext)
+                .Select(g => new FileTypeStat
+                {
+                    Extension = g.Key,
+                    Count = g.Count(),
+                    Percentage = totalImages > 0 ? (double)g.Count() / totalImages * 100 : 0
+                })
+                .OrderByDescending(f => f.Count)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading report data");
+            errorMessage = $"Failed to load report data: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshReport()
+    {
+        // IMMEDIATE FEEDBACK!
+        isLoading = true;
+        errorMessage = "";
+        StateHasChanged();
+        
+        await Task.Delay(100);
+        await LoadReportData();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private void UpdateAiSamplesPage()
+    {
+        aiSamples = allAiSamples
+            .Skip(currentAiPage * aiSamplesPerPage)
+            .Take(aiSamplesPerPage)
+            .ToList();
+    }
+
+    private void NextAiPage()
+    {
+        if ((currentAiPage + 1) * aiSamplesPerPage < allAiSamples.Count)
+        {
+            currentAiPage++;
+            UpdateAiSamplesPage();
+            StateHasChanged();
+        }
+    }
+
+    private void PreviousAiPage()
+    {
+        if (currentAiPage > 0)
+        {
+            currentAiPage--;
+            UpdateAiSamplesPage();
+            StateHasChanged();
+        }
+    }
+}
