@@ -12,26 +12,12 @@ namespace FaceVault.Services
 {
     public class SystemTrayService : IDisposable
     {
-        // Windows API imports for console management
-        [DllImport("kernel32.dll")]
-        private static extern IntPtr GetConsoleWindow();
-
-        [DllImport("user32.dll")]
-        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-
-        private const int SW_HIDE = 0;
-        private const int SW_SHOW = 5;
-        private const int SW_RESTORE = 9;
-        private const int SW_MINIMIZE = 6;
-        private const int SW_SHOWMINIMIZED = 2;
-        private const int SW_SHOWNA = 8;
+        // No console management needed with OutputType=WinExe
 
         private NotifyIcon? _trayIcon;
         private readonly ILogger<SystemTrayService> _logger;
         private readonly IHostApplicationLifetime _applicationLifetime;
         private bool _disposed = false;
-        private static bool _consoleVisible = false;
-        private static IntPtr _consoleWindow = IntPtr.Zero;
         private Thread? _trayThread;
 
         public SystemTrayService(
@@ -46,13 +32,7 @@ namespace FaceVault.Services
         {
             try
             {
-                // Get console window handle
-                _consoleWindow = GetConsoleWindow();
-                
-                // Console is already hidden from Program.cs
-                _consoleVisible = false;
-                
-                _logger.LogInformation($"System tray service initializing. Console handle: {_consoleWindow}");
+                _logger.LogInformation("System tray service initializing");
 
                 // Add to startup automatically (user-level, no admin required)
                 AddToStartup();
@@ -175,10 +155,10 @@ namespace FaceVault.Services
                 openMenuItem.Font = new Font(openMenuItem.Font, FontStyle.Bold); // Make default action bold
                 contextMenu.Items.Add(openMenuItem);
                 
-                // Show/Hide Console - Toggles console visibility
-                var consoleMenuItem = new ToolStripMenuItem("Show Console");
-                consoleMenuItem.Click += (s, e) => ToggleConsole();
-                contextMenu.Items.Add(consoleMenuItem);
+                // View Logs - Opens log file
+                var logsMenuItem = new ToolStripMenuItem("View Logs");
+                logsMenuItem.Click += (s, e) => OpenLogFile();
+                contextMenu.Items.Add(logsMenuItem);
                 
                 contextMenu.Items.Add(new ToolStripSeparator());
                 
@@ -238,51 +218,32 @@ namespace FaceVault.Services
             return Icon.FromHandle(bitmap.GetHicon());
         }
 
-        private void ToggleConsole()
+        private void OpenLogFile()
         {
             try
             {
-                if (_consoleWindow == IntPtr.Zero)
+                // Open the log file in default text editor
+                var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FaceVault", "Logs");
+                var latestLog = Directory.GetFiles(logDir, "*.log")
+                    .OrderByDescending(f => File.GetLastWriteTime(f))
+                    .FirstOrDefault();
+                    
+                if (!string.IsNullOrEmpty(latestLog))
                 {
-                    _consoleWindow = GetConsoleWindow();
-                }
-                
-                if (_consoleWindow != IntPtr.Zero)
-                {
-                    _consoleVisible = !_consoleVisible;
-                    
-                    if (_consoleVisible)
+                    Process.Start(new ProcessStartInfo
                     {
-                        // Show and restore the console window
-                        ShowWindow(_consoleWindow, SW_RESTORE);
-                        ShowWindow(_consoleWindow, SW_SHOW);
-                    }
-                    else
-                    {
-                        // Hide the console window
-                        ShowWindow(_consoleWindow, SW_HIDE);
-                    }
-                    
-                    // Update menu item text
-                    if (_trayIcon?.ContextMenuStrip != null && _trayIcon.ContextMenuStrip.Items.Count > 1)
-                    {
-                        var consoleMenuItem = _trayIcon.ContextMenuStrip.Items[1] as ToolStripMenuItem;
-                        if (consoleMenuItem != null)
-                        {
-                            consoleMenuItem.Text = _consoleVisible ? "Hide Console" : "Show Console";
-                        }
-                    }
-                    
-                    _logger.LogInformation($"Console window {(_consoleVisible ? "shown" : "hidden")}");
+                        FileName = latestLog,
+                        UseShellExecute = true
+                    });
                 }
                 else
                 {
-                    _logger.LogWarning("Console window handle is null");
+                    _logger.LogWarning("No log files found");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error toggling console visibility");
+                _logger.LogError(ex, "Error opening log file");
             }
         }
 

@@ -15,16 +15,35 @@ static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
 const int SW_HIDE = 0;
 
+// Hide console window immediately at startup
+var consoleWindow = GetConsoleWindow();
+if (consoleWindow != IntPtr.Zero)
+{
+    ShowWindow(consoleWindow, SW_HIDE);
+}
+
 // Check if app should start minimized
 var commandLineArgs = Environment.GetCommandLineArgs();
 var startMinimized = commandLineArgs.Contains("--minimized");
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Kestrel to use HTTP only on port 5113
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenLocalhost(5113, listenOptions =>
+    {
+        listenOptions.Protocols = Microsoft.AspNetCore.Server.Kestrel.Core.HttpProtocols.Http1AndHttp2;
+    });
+});
+
+
 // Configure Blazor-recommended logging
 builder.Logging.ClearProviders();
-builder.Logging.AddConsole();
+// Add file logging since we don't have console with WinExe
 builder.Logging.AddDebug();
+builder.Logging.AddEventLog(); // Use Windows Event Log
+builder.Logging.AddFilter<Microsoft.Extensions.Logging.EventLog.EventLogLoggerProvider>(level => level >= Microsoft.Extensions.Logging.LogLevel.Information);
 
 // Check for verbose logging environment variable or configuration
 var enableVerboseLogging = Environment.GetEnvironmentVariable("FACEVAULT_VERBOSE_LOGGING")?.ToLower() == "true" ||
@@ -128,16 +147,7 @@ builder.Services.AddHostedService<BackgroundTaskService>();
 
 var app = builder.Build();
 
-// Create a task to hide console window shortly after startup
-_ = Task.Run(async () =>
-{
-    await Task.Delay(500); // Wait for console to be fully created
-    var consoleWindow = GetConsoleWindow();
-    if (consoleWindow != IntPtr.Zero)
-    {
-        ShowWindow(consoleWindow, SW_HIDE);
-    }
-});
+// No console to hide with OutputType=WinExe
 
 // Get logger for structured logging
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -146,11 +156,10 @@ var logger = app.Services.GetRequiredService<ILogger<Program>>();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+// No HTTPS for local application
+// app.UseHttpsRedirection(); // Removed - HTTP only
 
 app.UseStaticFiles();
 
@@ -275,13 +284,6 @@ try
     var systemTrayService = app.Services.GetRequiredService<SystemTrayService>();
     systemTrayService.Initialize();
     
-    // Hide console window after everything is initialized
-    var consoleWindow = GetConsoleWindow();
-    if (consoleWindow != IntPtr.Zero)
-    {
-        ShowWindow(consoleWindow, SW_HIDE);
-        Logger.Info("Console window hidden after initialization");
-    }
     
     // If started with --minimized, don't open browser
     if (!startMinimized)
