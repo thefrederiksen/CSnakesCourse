@@ -3,6 +3,21 @@ using FaceVault.Data;
 using Microsoft.EntityFrameworkCore;
 using CSnakes.Runtime;
 using CSnakes.Runtime.PackageManagement;
+using System.Windows.Forms;
+using System.Runtime.InteropServices;
+
+// Windows API imports for console management
+[DllImport("kernel32.dll")]
+static extern IntPtr GetConsoleWindow();
+
+[DllImport("user32.dll")]
+static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+const int SW_HIDE = 0;
+
+// Check if app should start minimized
+var commandLineArgs = Environment.GetCommandLineArgs();
+var startMinimized = commandLineArgs.Contains("--minimized");
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -107,7 +122,22 @@ builder.Services.AddSingleton<IDatabaseChangeNotificationService, DatabaseChange
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
+// Add system tray service
+builder.Services.AddSingleton<SystemTrayService>();
+builder.Services.AddHostedService<BackgroundTaskService>();
+
 var app = builder.Build();
+
+// Create a task to hide console window shortly after startup
+_ = Task.Run(async () =>
+{
+    await Task.Delay(500); // Wait for console to be fully created
+    var consoleWindow = GetConsoleWindow();
+    if (consoleWindow != IntPtr.Zero)
+    {
+        ShowWindow(consoleWindow, SW_HIDE);
+    }
+});
 
 // Get logger for structured logging
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
@@ -240,6 +270,38 @@ try
 
     Logger.Info("FaceVault Blazor application running");
     logger.LogInformation("FaceVault server started successfully and is ready to accept requests");
+    
+    // Initialize system tray
+    var systemTrayService = app.Services.GetRequiredService<SystemTrayService>();
+    systemTrayService.Initialize();
+    
+    // Hide console window after everything is initialized
+    var consoleWindow = GetConsoleWindow();
+    if (consoleWindow != IntPtr.Zero)
+    {
+        ShowWindow(consoleWindow, SW_HIDE);
+        Logger.Info("Console window hidden after initialization");
+    }
+    
+    // If started with --minimized, don't open browser
+    if (!startMinimized)
+    {
+        // Open default browser with correct port from launchSettings
+        var url = "http://localhost:5113";
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"Failed to open browser: {ex.Message}");
+        }
+    }
+    
     app.Run();
 }
 catch (Exception ex)

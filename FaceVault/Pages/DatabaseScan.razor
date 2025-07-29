@@ -143,7 +143,12 @@
                         <ul class="mb-0">
                             <li><strong>Scope:</strong> Will analyze @unanalyzedCount unanalyzed images</li>
                             <li><strong>Processing:</strong> One image at a time for stable API calls</li>
-                            <li><strong>Time estimate:</strong> ~2-5 seconds per image</li>
+                            <li><strong>Initial estimate:</strong> ~2 seconds per image</li>
+                            @if (unanalyzedCount > 0)
+                            {
+                                var initialEstimateMinutes = (unanalyzedCount * 2) / 60.0;
+                                <li><strong>Total time estimate:</strong> ~@(initialEstimateMinutes < 1 ? $"{unanalyzedCount * 2} seconds" : $"{initialEstimateMinutes:F1} minutes")</li>
+                            }
                         </ul>
                     </div>
                 </div>
@@ -200,6 +205,36 @@
                                         </div>
                                     }
                                 </div>
+                                
+                                <!-- Real-time Time Estimates -->
+                                @if (processedImages > 0)
+                                {
+                                    <div class="alert alert-light border mt-2">
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <strong>@totalElapsedTime.ToString(@"mm\:ss")</strong><br>
+                                                <small class="text-muted">Elapsed</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <strong>@estimatedTimeRemaining.ToString(@"mm\:ss")</strong><br>
+                                                <small class="text-muted">Remaining</small>
+                                            </div>
+                                            <div class="col-4">
+                                                <strong>@averageTimePerImage.ToString("F1")s</strong><br>
+                                                <small class="text-muted">Avg per image</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else if (totalToAnalyze > 0)
+                                {
+                                    <div class="alert alert-light border mt-2">
+                                        <div class="text-center">
+                                            <strong>Initial Estimate: @TimeSpan.FromSeconds(totalToAnalyze * 2).ToString(@"mm\:ss")</strong><br>
+                                            <small class="text-muted">Based on 2 seconds per image</small>
+                                        </div>
+                                    </div>
+                                }
                                 
                                 @if (!string.IsNullOrEmpty(currentImage))
                                 {
@@ -436,6 +471,12 @@
     
     private CancellationTokenSource? cancellationTokenSource;
     private List<AnalysisResult> analysisResults = new();
+    
+    // Time tracking variables
+    private DateTime analysisStartTime;
+    private double averageTimePerImage = 2.0; // Start with 2 second estimate
+    private TimeSpan estimatedTimeRemaining = TimeSpan.Zero;
+    private TimeSpan totalElapsedTime = TimeSpan.Zero;
 
     public class AnalysisResult
     {
@@ -564,6 +605,13 @@
         errorCount = 0;
         analysisResults.Clear();
         currentStatus = "Starting AI analysis...";
+        
+        // Initialize timing variables
+        analysisStartTime = DateTime.Now;
+        averageTimePerImage = 2.0; // Start with 2 second estimate
+        estimatedTimeRemaining = TimeSpan.Zero;
+        totalElapsedTime = TimeSpan.Zero;
+        
         StateHasChanged();
         
         // Small delay to ensure UI shows the starting message
@@ -594,7 +642,6 @@
             return;
         }
 
-        var startTime = DateTime.Now;
         
         try
         {
@@ -631,11 +678,10 @@
             await Task.Delay(100);
 
             // Process images one at a time
-            startTime = DateTime.Now;
             
             foreach (var image in imagesToAnalyze)
                 {
-                    if (cancellationTokenSource.Token.IsCancellationRequested)
+                    if (cancellationTokenSource?.Token.IsCancellationRequested == true)
                         break;
 
                     try
@@ -677,20 +723,125 @@
                             continue;
                         }
                         
-                        // Call Python analysis function with individual parameters
-                        var analysisResult = PythonEnv.ImageAnalysisModule().AnalyzeImageWithAi(
-                            fullPath,
-                            settings?.AIProvider ?? "",
-                            settings?.AIApiKey ?? "",
-                            settings?.AIModel ?? "",
-                            settings?.AIApiEndpoint ?? ""
-                        );
+                        // Call Python analysis function asynchronously to allow immediate cancellation
+                        var analysisResult = await Task.Run(() => 
+                        {
+                            // This runs on a background thread and can be cancelled
+                            return PythonEnv.ImageAnalysisModule().AnalyzeImageWithAi(
+                                fullPath,
+                                settings?.AIProvider ?? "",
+                                settings?.AIApiKey ?? "",
+                                settings?.AIModel ?? "",
+                                settings?.AIApiEndpoint ?? ""
+                            );
+                        }, cancellationTokenSource?.Token ?? CancellationToken.None);
                         
                         // Parse the Python result
                         string category = analysisResult["category"]?.ToString() ?? "Unknown";
                         string description = analysisResult["description"]?.ToString() ?? "";
                         double confidence = Convert.ToDouble(analysisResult["confidence"]?.ToString() ?? "0.0");
                         string modelUsed = analysisResult["model"]?.ToString() ?? "Basic Image Analysis";
+                        
+                        // Extract structured AI data if available
+                        string aiKeywords = "";
+                        try
+                        {
+                            // Check if we have the analysis object from OpenAI
+                            if (analysisResult.ContainsKey("analysis") && analysisResult["analysis"] != null)
+                            {
+                                var analysisObj = analysisResult["analysis"];
+                                
+                                // Try to get nested analysis fields - handle both PyObject and direct access
+                                string? GetNestedValue(string key)
+                                {
+                                    try
+                                    {
+                                        if (analysisObj is System.Collections.IDictionary dict && dict.Contains(key))
+                                            return dict[key]?.ToString();
+                                        return analysisResult[key]?.ToString(); // Fallback to root level
+                                    }
+                                    catch
+                                    {
+                                        return null;
+                                    }
+                                }
+                                
+                                // Override category if AI provided better classification
+                                var aiCategory = GetNestedValue("category");
+                                if (!string.IsNullOrEmpty(aiCategory))
+                                    category = aiCategory;
+                                
+                                // Override description if AI provided better one
+                                var aiDescription = GetNestedValue("description");
+                                if (!string.IsNullOrEmpty(aiDescription))
+                                    description = aiDescription;
+                                
+                                // Build keywords from various AI fields
+                                var keywords = new List<string>();
+                                
+                                // Add screenshot detection
+                                var isScreenshotStr = GetNestedValue("is_screenshot");
+                                if (!string.IsNullOrEmpty(isScreenshotStr) && bool.TryParse(isScreenshotStr, out bool isScreenshot) && isScreenshot)
+                                {
+                                    keywords.Add("screenshot");
+                                    // Update category if it's a screenshot
+                                    if (category == "Unknown" || category == "Objects")
+                                        category = "Screenshots";
+                                }
+                                
+                                // Add people count
+                                var peopleCountStr = GetNestedValue("people_count");
+                                if (!string.IsNullOrEmpty(peopleCountStr) && int.TryParse(peopleCountStr, out int peopleCount) && peopleCount > 0)
+                                {
+                                    keywords.Add($"people:{peopleCount}");
+                                    if (category == "Unknown")
+                                        category = "People";
+                                }
+                                
+                                // Add text detection
+                                var textFound = GetNestedValue("text_found");
+                                if (!string.IsNullOrWhiteSpace(textFound))
+                                {
+                                    keywords.Add("has_text");
+                                    // Check if it's a document based on text content
+                                    if (textFound.Length > 50 || textFound.Contains("document") || textFound.Contains("scan"))
+                                    {
+                                        keywords.Add("document");
+                                        if (category == "Unknown")
+                                            category = "Documents";
+                                    }
+                                }
+                                
+                                // Try to parse comma/space separated values for objects, tags, colors
+                                void AddListKeywords(string field, string prefix = "")
+                                {
+                                    var fieldValue = GetNestedValue(field);
+                                    if (!string.IsNullOrEmpty(fieldValue))
+                                    {
+                                        // Handle both JSON arrays and comma-separated strings
+                                        var items = fieldValue.Replace("[", "").Replace("]", "").Replace("\"", "")
+                                            .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                                            .Select(s => s.Trim())
+                                            .Where(s => !string.IsNullOrEmpty(s));
+                                        
+                                        foreach (var item in items.Take(10)) // Limit to avoid too many keywords
+                                        {
+                                            keywords.Add(string.IsNullOrEmpty(prefix) ? item : $"{prefix}:{item}");
+                                        }
+                                    }
+                                }
+                                
+                                AddListKeywords("objects", "object");
+                                AddListKeywords("tags");
+                                AddListKeywords("dominant_colors", "color");
+                                
+                                aiKeywords = string.Join(", ", keywords.Where(k => !string.IsNullOrWhiteSpace(k)));
+                            }
+                        }
+                        catch (Exception parseEx)
+                        {
+                            Logger.LogWarning(parseEx, "Failed to parse structured AI data for image {ImagePath}", image.RelativePath);
+                        }
                         
                         // Convert the entire result to JSON for debugging
                         string jsonResponse = "";
@@ -724,6 +875,7 @@
                             existingAnalysis.AIAnalyzedAt = DateTime.UtcNow;
                             existingAnalysis.AIModelUsed = modelUsed;
                             existingAnalysis.AIAnalysisJson = jsonResponse;
+                            existingAnalysis.AIKeywords = aiKeywords;
                         }
                         else
                         {
@@ -735,7 +887,8 @@
                                 AIDescription = description,
                                 AIAnalyzedAt = DateTime.UtcNow,
                                 AIModelUsed = modelUsed,
-                                AIAnalysisJson = jsonResponse
+                                AIAnalysisJson = jsonResponse,
+                                AIKeywords = aiKeywords
                             };
                             DbContext.tbl_image_analysis.Add(newAnalysis);
                         }
@@ -754,26 +907,34 @@
                         successfulAnalyses++;
                         processedImages++;
                         
-                        // Update UI every 5 images or at the end
-                        if (processedImages % 5 == 0 || processedImages == totalToAnalyze)
+                        // Update timing calculations after each image
+                        totalElapsedTime = DateTime.Now - analysisStartTime;
+                        if (processedImages > 0)
                         {
-                            // Calculate time remaining
-                            var elapsed = DateTime.Now - startTime;
-                            var avgTimePerImage = elapsed.TotalSeconds / processedImages;
+                            averageTimePerImage = totalElapsedTime.TotalSeconds / processedImages;
                             var remainingImages = totalToAnalyze - processedImages;
-                            var estimatedTimeRemaining = TimeSpan.FromSeconds(avgTimePerImage * remainingImages);
-                            
-                            currentStatus = $"Analyzing: {currentImage} ({processedImages}/{totalToAnalyze}) - Est. {estimatedTimeRemaining:mm\\:ss} remaining";
-                            
-                            StateHasChanged();
-                            await Task.Delay(1); // Allow UI to update
+                            estimatedTimeRemaining = TimeSpan.FromSeconds(averageTimePerImage * remainingImages);
                         }
+                        
+                        // Update UI every image or at the end for real-time feedback
+                        currentStatus = $"Analyzing: {currentImage} ({processedImages}/{totalToAnalyze})";
+                        StateHasChanged();
+                        await Task.Delay(1); // Allow UI to update
                     }
                     catch (Exception ex)
                     {
                         Logger.LogError(ex, "Error analyzing image: {ImagePath}", image.RelativePath);
                         errorCount++;
                         processedImages++;
+                        
+                        // Update timing calculations even for errors
+                        totalElapsedTime = DateTime.Now - analysisStartTime;
+                        if (processedImages > 0)
+                        {
+                            averageTimePerImage = totalElapsedTime.TotalSeconds / processedImages;
+                            var remainingImages = totalToAnalyze - processedImages;
+                            estimatedTimeRemaining = TimeSpan.FromSeconds(averageTimePerImage * remainingImages);
+                        }
                         
                         // Add error to results so user can see what failed
                         analysisResults.Add(new AnalysisResult
@@ -794,7 +955,7 @@
                     }
                     
                     // Check for cancellation between images
-                    if (cancellationTokenSource.Token.IsCancellationRequested)
+                    if (cancellationTokenSource?.Token.IsCancellationRequested == true)
                     {
                         analysisError = "Analysis was cancelled by user.";
                         currentStatus = "Analysis cancelled.";
@@ -842,7 +1003,7 @@
             // Final status update
             if (analysisCompleted && string.IsNullOrEmpty(analysisError))
             {
-                currentStatus = $"Analysis completed! Processed {processedImages} images in {(DateTime.Now - startTime):mm\\:ss}";
+                currentStatus = $"Analysis completed! Processed {processedImages} images in {totalElapsedTime:mm\\:ss}";
             }
             
             StateHasChanged();

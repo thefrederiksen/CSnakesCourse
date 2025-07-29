@@ -1,0 +1,3 @@
+# This is a placeholder for the icon file
+# In production, you would add a real .ico file here
+# For now, the SystemTrayService creates a programmatic icon

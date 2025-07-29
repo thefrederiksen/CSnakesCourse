@@ -156,6 +156,81 @@
                                             </div>
                                         }
                                         
+                                        @if (!string.IsNullOrEmpty(sample.Keywords))
+                                        {
+                                            <div class="mb-3">
+                                                <strong>AI Analysis Details:</strong>
+                                                <div class="border rounded p-2 bg-light mt-1">
+                                                    @{
+                                                        var keywords = sample.Keywords.Split(new[] { ", " }, StringSplitOptions.RemoveEmptyEntries);
+                                                        var isScreenshot = keywords.Any(k => k.Equals("screenshot", StringComparison.OrdinalIgnoreCase));
+                                                        var hasText = keywords.Any(k => k.Equals("has_text", StringComparison.OrdinalIgnoreCase));
+                                                        var isDocument = keywords.Any(k => k.Equals("document", StringComparison.OrdinalIgnoreCase));
+                                                        var peopleCount = keywords.FirstOrDefault(k => k.StartsWith("people:"))?.Split(':').LastOrDefault();
+                                                        var objects = keywords.Where(k => k.StartsWith("object:")).Select(k => k.Split(':').LastOrDefault()).ToList();
+                                                        var colors = keywords.Where(k => k.StartsWith("color:")).Select(k => k.Split(':').LastOrDefault()).ToList();
+                                                    }
+                                                    
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="mb-2">
+                                                                <strong>Type Detection:</strong><br>
+                                                                @if (isScreenshot)
+                                                                {
+                                                                    <span class="badge bg-warning me-1">📱 Screenshot</span>
+                                                                }
+                                                                @if (isDocument)
+                                                                {
+                                                                    <span class="badge bg-info me-1">📄 Document</span>
+                                                                }
+                                                                @if (hasText)
+                                                                {
+                                                                    <span class="badge bg-secondary me-1">🔤 Contains Text</span>
+                                                                }
+                                                                @if (!string.IsNullOrEmpty(peopleCount) && peopleCount != "0")
+                                                                {
+                                                                    <span class="badge bg-success me-1">👥 People: @peopleCount</span>
+                                                                }
+                                                            </div>
+                                                            
+                                                            @if (objects.Any())
+                                                            {
+                                                                <div class="mb-2">
+                                                                    <strong>Objects Detected:</strong><br>
+                                                                    @foreach (var obj in objects.Take(5))
+                                                                    {
+                                                                        <span class="badge bg-light text-dark me-1">@obj</span>
+                                                                    }
+                                                                    @if (objects.Count > 5)
+                                                                    {
+                                                                        <span class="badge bg-light text-muted">+@(objects.Count - 5) more</span>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                        
+                                                        <div class="col-md-6">
+                                                            @if (colors.Any())
+                                                            {
+                                                                <div class="mb-2">
+                                                                    <strong>Dominant Colors:</strong><br>
+                                                                    @foreach (var color in colors.Take(4))
+                                                                    {
+                                                                        <span class="badge bg-light text-dark me-1">🎨 @color</span>
+                                                                    }
+                                                                </div>
+                                                            }
+                                                            
+                                                            <div class="small text-muted">
+                                                                <strong>All Keywords:</strong><br>
+                                                                @sample.Keywords
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                        
                                         @if (!string.IsNullOrEmpty(sample.JsonResponse))
                                         {
                                             <div class="mt-3">
@@ -340,6 +415,7 @@
         public string AIModel { get; set; } = "";
         public DateTime? AnalyzedAt { get; set; }
         public string JsonResponse { get; set; } = "";
+        public string Keywords { get; set; } = "";
     }
 
     private class DuplicateGroup
@@ -363,11 +439,28 @@
         errorMessage = "";
         StateHasChanged();
         
-        // Ensure UI updates
-        await Task.Delay(100);
-        
-        // Now load the data
-        await LoadReportData();
+        try
+        {
+            // Ensure UI updates
+            await Task.Delay(100);
+            
+            // Now load the data
+            await LoadReportData();
+        }
+        catch (OperationCanceledException)
+        {
+            // Page navigation occurred, ignore
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error during report initialization");
+            errorMessage = $"Failed to load report: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
     private async Task LoadReportData()
@@ -407,7 +500,8 @@
                         Description = analysis.AIDescription ?? "",
                         AIModel = analysis.AIModelUsed ?? "Unknown",
                         AnalyzedAt = analysis.AIAnalyzedAt,
-                        JsonResponse = analysis.AIAnalysisJson ?? ""
+                        JsonResponse = analysis.AIAnalysisJson ?? "",
+                        Keywords = analysis.AIKeywords ?? ""
                     })
                 .OrderByDescending(s => s.AnalyzedAt)
                 .ToListAsync();

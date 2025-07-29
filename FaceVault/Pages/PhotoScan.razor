@@ -43,12 +43,6 @@
                         </div>
                     </div>
                     
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="includeSubdirs" @bind="includeSubdirectories">
-                        <label class="form-check-label" for="includeSubdirs">
-                            Include subdirectories
-                        </label>
-                    </div>
                 </div>
             </div>
 
@@ -255,7 +249,6 @@
 
 @code {
     private string scanDirectory = "";
-    private bool includeSubdirectories = true;
     private readonly string[] supportedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif" };
     
     private bool isScanning = false;
@@ -361,8 +354,8 @@
                         StateHasChanged();
                     });
 
-                    // Get all image files
-                    var searchOption = includeSubdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+                    // Get all image files (always include subdirectories)
+                    var searchOption = SearchOption.AllDirectories;
                     var allFiles = new List<string>();
                     
                     foreach (var ext in supportedExtensions)
@@ -596,7 +589,29 @@
 
     public void Dispose()
     {
-        cancellationTokenSource?.Cancel();
-        cancellationTokenSource?.Dispose();
+        // Cancel any ongoing operations IMMEDIATELY
+        try
+        {
+            cancellationTokenSource?.Cancel();
+            isScanning = false;
+            
+            // Try to update state one last time if possible
+            try
+            {
+                StateHasChanged();
+            }
+            catch
+            {
+                // Ignore state update errors during disposal
+            }
+        }
+        catch
+        {
+            // Ignore cancellation errors during disposal
+        }
+        finally
+        {
+            cancellationTokenSource?.Dispose();
+        }
     }
 }
