@@ -1,0 +1,14 @@
+[
+  {
+    "id": "9c9ae3bf-54dd-48b1-92f9-e6ef027d45d7",
+    "symbol": "ABNB",
+    "quantity": 20,
+    "price": 50,
+    "totalValue": 1000,
+    "createdDate": "2025-07-07T10:03:25.2809819-04:00",
+    "isBuy": true,
+    "isSundayTrade": true,
+    "notes": null,
+    "latestPrice": null
+  }
+]

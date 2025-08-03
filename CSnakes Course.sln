@@ -3,41 +3,37 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36212.18
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "01. HelloWorld", "HelloWorld\01. HelloWorld.csproj", "{7D1E490F-0802-43A1-857C-3602FA878C24}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "01. HelloWorld", "01 HelloWorld\01. HelloWorld.csproj", "{7D1E490F-0802-43A1-857C-3602FA878C24}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "02. Primitives_And_Return_Types", "Primitives_And_Return_Types\02. Primitives_And_Return_Types.csproj", "{ED3B934D-F526-40EE-9E69-4DCC59C141CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "02. Primitives_And_Return_Types", "02 Primitives_And_Return_Types\02. Primitives_And_Return_Types.csproj", "{ED3B934D-F526-40EE-9E69-4DCC59C141CB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "03. CollectionsAndTuples", "CollectionsAndTuples\03. CollectionsAndTuples.csproj", "{59B8C144-8E57-4657-9812-31CD08206418}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "03. CollectionsAndTuples", "03 CollectionsAndTuples\03. CollectionsAndTuples.csproj", "{59B8C144-8E57-4657-9812-31CD08206418}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "04. Managing Python", "Managing Python\04. Managing Python.csproj", "{A712529F-7EB4-4356-9312-713EA09D16D3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "04. Managing Python", "04 Managing Python\04. Managing Python.csproj", "{A712529F-7EB4-4356-9312-713EA09D16D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "06. NumPy1", "NumPy1\06. NumPy1.csproj", "{ADCF87C8-FCC0-4E71-8880-ED032456485F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "06. NumPy1", "06 NumPy1\06. NumPy1.csproj", "{ADCF87C8-FCC0-4E71-8880-ED032456485F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "07. Numpy2", "Numpy2\07. Numpy2.csproj", "{AAEDEC3C-EF69-4AC3-9D63-C4AAE1E881BA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "07. Numpy2", "07 Numpy2\07. Numpy2.csproj", "{AAEDEC3C-EF69-4AC3-9D63-C4AAE1E881BA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlazorTrader", "BlazorTrader\BlazorTrader.csproj", "{01AACE14-DC55-4174-8D22-D0BDA351C643}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "G2. BlazorTrader", "G2 BlazorTrader\G2. BlazorTrader.csproj", "{01AACE14-DC55-4174-8D22-D0BDA351C643}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "08. CSnakesExceptions", "CSnakesExceptions\08. CSnakesExceptions.csproj", "{83B4079E-4560-4234-A4B9-E8C6030A9197}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "08. CSnakesExceptions", "08 CSnakesExceptions\08. CSnakesExceptions.csproj", "{83B4079E-4560-4234-A4B9-E8C6030A9197}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "14. ProgressFromPython", "ProgressFromPython\14. ProgressFromPython.csproj", "{7EDAD315-13C8-4EDE-8B14-BAD384B383AA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "14. ProgressFromPython", "14 ProgressFromPython\14. ProgressFromPython.csproj", "{7EDAD315-13C8-4EDE-8B14-BAD384B383AA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "09. DataTable Sample", "DataTable Sample\09. DataTable Sample.csproj", "{353571DC-365B-487D-8EE6-28AC70165419}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "09. DataTable Sample", "09 DataTable Sample\09. DataTable Sample.csproj", "{353571DC-365B-487D-8EE6-28AC70165419}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "10. KMeans In Process", "KMeans In Process\10. KMeans In Process.csproj", "{4F59D2D1-1E7C-474A-AB36-5D9AEB949C5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "10. KMeans In Process", "10 KMeans In Process\10. KMeans In Process.csproj", "{4F59D2D1-1E7C-474A-AB36-5D9AEB949C5B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "12 Format Markdown", "Format Markdown\12 Format Markdown.csproj", "{DFD2AB16-05B3-499E-85AD-E495C91B0FCA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "12 Format Markdown", "12 Format Markdown\12 Format Markdown.csproj", "{DFD2AB16-05B3-499E-85AD-E495C91B0FCA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "15. Async Python", "Async Python\15. Async Python.csproj", "{5FB2378B-837D-447D-9DAA-DC7D6837CD0D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "11. Async Python", "11 Async Python\11. Async Python.csproj", "{5FB2378B-837D-447D-9DAA-DC7D6837CD0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "13. Generators Sample", "Generators Sample\13. Generators Sample.csproj", "{2B529546-7A19-4F6B-8972-B701D18ADFA2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "13. Generators Sample", "13 Generators Sample\13. Generators Sample.csproj", "{2B529546-7A19-4F6B-8972-B701D18ADFA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PythonTextAnalytics", "PythonTextAnalytics\PythonTextAnalytics.csproj", "{51454719-647B-49C0-8B00-B2271744BA0B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "G1. PythonTextAnalytics", "G1 PythonTextAnalytics\G1. PythonTextAnalytics.csproj", "{51454719-647B-49C0-8B00-B2271744BA0B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyPhotoHelper", "MyPhotoHelper\MyPhotoHelper.csproj", "{7E20BADA-5FD9-47FD-BD7F-07829AE98284}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyPhotoHelper.Tests", "MyPhotoHelper.Tests\MyPhotoHelper.Tests.csproj", "{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloWorld.Tests", "HelloWorld.Tests\HelloWorld.Tests.csproj", "{0BE81051-F97E-41A5-99A8-F70145EBBC81}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "05. HelloWorld.Tests", "05 HelloWorld.Tests\05. HelloWorld.Tests.csproj", "{0BE81051-F97E-41A5-99A8-F70145EBBC81}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -229,30 +225,6 @@ Global
 		{51454719-647B-49C0-8B00-B2271744BA0B}.Release|x64.Build.0 = Release|Any CPU
 		{51454719-647B-49C0-8B00-B2271744BA0B}.Release|x86.ActiveCfg = Release|Any CPU
 		{51454719-647B-49C0-8B00-B2271744BA0B}.Release|x86.Build.0 = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|x64.Build.0 = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Debug|x86.Build.0 = Debug|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|x64.ActiveCfg = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|x64.Build.0 = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|x86.ActiveCfg = Release|Any CPU
-		{7E20BADA-5FD9-47FD-BD7F-07829AE98284}.Release|x86.Build.0 = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|x64.Build.0 = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Debug|x86.Build.0 = Debug|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|x64.ActiveCfg = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|x64.Build.0 = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|x86.ActiveCfg = Release|Any CPU
-		{B1A9C547-8F8E-4A2B-9D4E-5F2C3E4A7B8C}.Release|x86.Build.0 = Release|Any CPU
 		{0BE81051-F97E-41A5-99A8-F70145EBBC81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0BE81051-F97E-41A5-99A8-F70145EBBC81}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0BE81051-F97E-41A5-99A8-F70145EBBC81}.Debug|x64.ActiveCfg = Debug|Any CPU
