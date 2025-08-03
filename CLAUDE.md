@@ -4,28 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-This repository contains a comprehensive CSnakes course that demonstrates C# and Python interoperability using the CSnakes runtime. The project is organized as multiple lessons that progressively introduce concepts from basic hello world applications to advanced trading systems with machine learning integration.
+This repository contains a comprehensive CSnakes course that demonstrates C# and Python interoperability using the CSnakes runtime. The project is organized as 15+ lessons that progressively introduce concepts from basic hello world applications to advanced trading systems with machine learning integration.
 
 ## Architecture
 
-The repository is structured as a Visual Studio solution with multiple projects representing different lessons/labs:
+The repository is structured as a Visual Studio solution with multiple projects representing different lessons:
 
-- **Course Structure**: 13 distinct projects covering CSnakes fundamentals
+- **Course Structure**: 15+ distinct projects covering CSnakes fundamentals
 - **Core Technology**: CSnakes.Runtime for C#/Python interoperability  
 - **Target Framework**: .NET 9.0
 - **Python Integration**: Uses CSnakes to execute Python code from C# applications
+- **Python Versions**: Supports Python 3.9 through 3.13
 
-### Key Projects
+### Key Project Types
 
-1. **HelloWorld**: Basic CSnakes setup and Python function calling
-2. **Primitives_And_Return_Types**: Data type handling between C# and Python
-3. **CollectionsAndTuples**: Working with complex data structures
-4. **Managing Python**: Python runtime and virtual environment management
-5. **NumPy1/Numpy2**: NumPy array integration and buffer operations
-6. **CSnakesExceptions**: Error handling across language boundaries
-7. **BlazorTrader**: Full-stack trading application with Python ML backend
-8. **TalkToMyCode**: WinForms application for code analysis
-9. **TestPython/ProgressFromPython**: Testing and progress reporting patterns
+1. **Foundation Projects (01-04)**: Basic CSnakes setup, data type handling, collections, and Python environment management
+2. **Intermediate Projects (06-10)**: NumPy integration, exception handling, data processing, and ML with scikit-learn
+3. **Advanced Projects (12-15)**: Text processing, generators, async operations, and progress reporting
+4. **Production Applications**: 
+   - **BlazorTrader**: Full-stack trading application with Python ML backend
+   - **PythonTextAnalytics**: WinForms application for AI-powered code analysis
 
 ### BlazorTrader Architecture
 
@@ -33,7 +31,7 @@ The most complex project demonstrating production patterns:
 - **Frontend**: Blazor Server application with real-time trading UI
 - **Backend**: C# application orchestrating Python ML pipeline
 - **Python Pipeline**: Multi-stage ML workflow (data download → indicators → training → prediction)
-- **Data**: S&P 500 stock data with technical indicators and XGBoost models
+- **ML Stack**: XGBoost models with S&P 500 stock data and technical indicators
 
 ## Common Development Commands
 
@@ -50,6 +48,15 @@ dotnet run
 
 # Or run from solution root
 dotnet run --project "HelloWorld/01. HelloWorld.csproj"
+```
+
+### Running Tests
+```bash
+# Run all tests in the solution
+dotnet test "CSnakes Course.sln"
+
+# Run tests for specific project
+dotnet test HelloWorld.Tests/HelloWorld.Tests.csproj
 ```
 
 ### Python Environment Setup
@@ -79,12 +86,20 @@ Each lesson follows this pattern:
 - Python files configured as `AdditionalFiles` with `CopyToOutputDirectory`
 
 ### Python Module Integration
-Python files are embedded as additional files:
+Python files are embedded as additional files in .csproj:
 ```xml
 <AdditionalFiles Include="hello.py">
   <CopyToOutputDirectory>Always</CopyToOutputDirectory>
 </AdditionalFiles>
 ```
+
+### Python Locator Strategies
+Different approaches demonstrated across projects:
+- `FromRedistributable()`: Downloads and caches Python locally
+- `FromEnvironmentVariable()`: Uses system Python installation
+- `FromFolder()`: Specific Python installation path
+- `FromVirtualEnvironment()`: Uses Python venv
+- `FromConda()`: Uses Conda environment
 
 ### Error Handling
 CSnakes exceptions are handled through:
@@ -94,12 +109,15 @@ CSnakes exceptions are handled through:
 
 ## Testing
 
-No centralized test framework is configured. Each project serves as a self-contained demonstration that can be run independently to verify functionality.
+Testing is implemented through MSTest projects:
+- `HelloWorld.Tests`: Unit tests for the basic HelloWorld project
+- Test projects use assembly-level setup for Python environment initialization
+- Tests are marked with `[DoNotParallelize]` to avoid Python runtime conflicts
 
-To test a project:
-1. Navigate to the project directory
-2. Run `dotnet run`
-3. Observe console output for expected results
+To run tests for a specific project:
+```bash
+dotnet test HelloWorld.Tests/HelloWorld.Tests.csproj
+```
 
 ## Python Dependencies
 
@@ -108,13 +126,40 @@ Common packages used across projects:
 - **pandas**: Data manipulation and analysis  
 - **xgboost**: Machine learning models
 - **yfinance**: Financial data downloading
-- **ta**: Technical analysis indicators
+- **ta/pandas_ta**: Technical analysis indicators
+- **scikit-learn**: Machine learning algorithms
+- **openai**: AI integration for result explanation
 
 ## Key CSnakes Concepts Demonstrated
 
-1. **Python Locator Strategies**: FromRedistributable, FromEnvironmentVariable, FromFolder, FromVirtualEnvironment, FromConda
-2. **Data Exchange**: Primitives, collections, NumPy arrays, custom objects
-3. **Memory Management**: Buffer sharing between C# and Python
-4. **Error Handling**: Exception propagation and handling
-5. **Async Operations**: Progress reporting from Python to C#
-6. **Production Deployment**: Environment configuration and dependency management
+1. **Data Exchange**: Primitives, collections, NumPy arrays, custom objects
+2. **Memory Management**: Zero-copy buffer sharing between C# and Python
+3. **Error Handling**: Exception propagation across language boundaries
+4. **Async Operations**: Progress reporting from Python to C#
+5. **Package Management**: Virtual environments and requirements.txt handling
+6. **Production Deployment**: Environment configuration strategies
+
+## Project-Specific Notes
+
+### BlazorTrader
+- Requires large Python dependencies (XGBoost, pandas, etc.)
+- Downloads ~500MB of S&P 500 historical data on first run
+- Uses environment variables from .env file (EnvLoader.cs)
+- Implements virtual environment with UV installer
+
+### NumPy Projects (06-07)
+- Demonstrate zero-copy buffer sharing
+- Show performance optimization techniques
+- Include timing measurements
+
+### Managing Python (04)
+- Shows different Python locator strategies
+- Demonstrates package installation patterns
+- Includes both simple and pandas examples
+
+## Build System Integration
+
+CSnakes generates bindings at build time, requiring Python to be installed on the build machine. For consistent builds:
+- Install the same Python version (e.g., 3.10.x) on all developer machines and build servers
+- Keep Python dependencies version-controlled in requirements.txt files
+- Consider using pyenv or pyenv-win for consistent Python versions

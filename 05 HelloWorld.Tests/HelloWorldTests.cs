@@ -2,7 +2,6 @@ using CSnakes.Runtime;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using HelloWorld;
 
 namespace HelloWorld.Tests;
 

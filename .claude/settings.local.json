@@ -17,7 +17,12 @@
       "Bash(del HelloWorld.TestsUnitTest1.cs)",
       "Bash(true)",
       "Bash(ls:*)",
-      "Bash(dotnet clean:*)"
+      "Bash(dotnet clean:*)",
+      "Bash(dir)",
+      "Bash(if [ -f \"G2. BlazorTrader.csproj.user\" ])",
+      "Bash(then mv \"G2. BlazorTrader.csproj.user\" \"BlazorTrader.csproj.user\")",
+      "Bash(fi)",
+      "Bash(dir:*)"
     ],
     "deny": []
   }
