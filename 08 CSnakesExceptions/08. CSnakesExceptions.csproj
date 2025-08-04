@@ -8,11 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="exeption_test.py" />
+    <None Remove="exception_test.py" />
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="exeption_test.py">
+    <AdditionalFiles Include="exception_test.py">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </AdditionalFiles>
   </ItemGroup>

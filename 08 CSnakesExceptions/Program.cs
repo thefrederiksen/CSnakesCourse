@@ -81,7 +81,7 @@ namespace CSnakesExceptions
             try
             {
                 // This uses the original test_divide_by_zero function
-                pythonEnv.ExeptionTest().TestDivideByZero();
+                pythonEnv.ExceptionTest().TestDivideByZero();
             }
             catch (PythonInvocationException ex)
             {
@@ -107,7 +107,7 @@ namespace CSnakesExceptions
             try
             {
                 // Function returns int but is typed as returning string
-                string result = pythonEnv.ExeptionTest().UmtimateQuestion();
+                string result = pythonEnv.ExceptionTest().UltimateQuestion();
                 Console.WriteLine($"Unexpected success: {result}");
             }
             catch (PythonInvocationException ex)
@@ -135,7 +135,7 @@ namespace CSnakesExceptions
             
             try
             {
-                var result = pythonEnv.ExeptionTest().SimpleDivisionError(10.0, 0.0);
+                var result = pythonEnv.ExceptionTest().SimpleDivisionError(10.0, 0.0);
             }
             catch (PythonInvocationException ex)
             {
@@ -172,7 +172,7 @@ namespace CSnakesExceptions
             
             try
             {
-                pythonEnv.ExeptionTest().NestedFunctionError();
+                pythonEnv.ExceptionTest().NestedFunctionError();
             }
             catch (PythonInvocationException ex)
             {
@@ -213,7 +213,7 @@ namespace CSnakesExceptions
             try
             {
                 // Pass individual parameters - simpler type conversion
-                var result = pythonEnv.ExeptionTest().ValidateUserDataSimple(
+                var result = pythonEnv.ExceptionTest().ValidateUserDataSimple(
                     "John Doe",
                     "twenty-five", // This should be a valid number string!
                     "john@example.com"
@@ -245,7 +245,7 @@ namespace CSnakesExceptions
             try
             {
                 // Pass individual parameters with valid data
-                var result = pythonEnv.ExeptionTest().ValidateUserDataSimple(
+                var result = pythonEnv.ExceptionTest().ValidateUserDataSimple(
                     "Jane Doe",
                     "25", // Valid age as string
                     "jane@example.com"
@@ -268,7 +268,7 @@ namespace CSnakesExceptions
             
             try
             {
-                var result = pythonEnv.ExeptionTest().SimulateNetworkOperation(
+                var result = pythonEnv.ExceptionTest().SimulateNetworkOperation(
                     "https://api.example.com/data", 
                     0.5  // Very short timeout
                 );
@@ -307,7 +307,7 @@ namespace CSnakesExceptions
             {
                 var emptyList = new List<long>();
                 // Pass list directly - CSnakes will handle conversion
-                var result = pythonEnv.ExeptionTest().ExceptionChainingDemo(emptyList);
+                var result = pythonEnv.ExceptionTest().ExceptionChainingDemo(emptyList);
             }
             catch (PythonInvocationException ex)
             {
@@ -328,7 +328,7 @@ namespace CSnakesExceptions
             {
                 var problematicList = new List<long> { 50, 50, 50 };
                 // Pass list directly - CSnakes will handle conversion
-                var result = pythonEnv.ExeptionTest().ExceptionChainingDemo(problematicList);
+                var result = pythonEnv.ExceptionTest().ExceptionChainingDemo(problematicList);
             }
             catch (PythonInvocationException ex)
             {
@@ -353,7 +353,7 @@ namespace CSnakesExceptions
             
             try
             {
-                var examples = pythonEnv.ExeptionTest().DemonstrateAllExceptions();
+                var examples = pythonEnv.ExceptionTest().DemonstrateAllExceptions();
                 
                 Console.WriteLine("Successfully caught and handled multiple exception types:");
                 

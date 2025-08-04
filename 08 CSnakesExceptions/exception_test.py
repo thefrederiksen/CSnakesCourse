@@ -25,7 +25,7 @@ def test_divide_by_zero():
         raise
 
 
-def umtimate_question() -> str:
+def ultimate_question() -> str:
     """
     Type mismatch demo: Returns int despite type hint of str
     This causes InvalidCastException in C#
@@ -256,7 +256,7 @@ def get_exception_info() -> Dict[str, Any]:
             try:
                 # Only include simple types to avoid serialization issues
                 if isinstance(value, (str, int, float, bool, list, dict, type(None))):
-                    locals_dict[key] = str(value)1
+                    locals_dict[key] = str(value)
             except:
                 locals_dict[key] = "<unable to serialize>"
     
