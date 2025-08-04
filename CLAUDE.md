@@ -163,3 +163,27 @@ CSnakes generates bindings at build time, requiring Python to be installed on th
 - Install the same Python version (e.g., 3.10.x) on all developer machines and build servers
 - Keep Python dependencies version-controlled in requirements.txt files
 - Consider using pyenv or pyenv-win for consistent Python versions
+
+## Recommended VS Code Settings
+
+For optimal development experience, recommend these VS Code workspace settings:
+
+### Window Title Simplification
+```json
+{
+  "window.title": "${rootName}"
+}
+```
+This removes filenames from the window title, showing only the project name for cleaner workspace switching.
+
+### Complete Recommended Settings
+```json
+{
+  "window.title": "${rootName}",
+  "explorer.compactFolders": false,
+  "files.trimTrailingWhitespace": true,
+  "editor.formatOnSave": true
+}
+```
+
+Add these to `.vscode/settings.json` in any CSnakes project workspace.
