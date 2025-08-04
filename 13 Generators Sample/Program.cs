@@ -40,25 +40,25 @@ namespace Generators_Sample
             // 3. Warm-up: create env + install packages (idempotent)
             var sw = Stopwatch.StartNew();
             Console.WriteLine("Creating environment and installing packages...");
-            var pyEnv = app.Services.GetRequiredService<IPythonEnvironment>();
+            var pythonEnv = app.Services.GetRequiredService<IPythonEnvironment>();
             Console.WriteLine($"Done – {sw.ElapsedMilliseconds} ms\n");
 
             // 4. Show the version of the Python code and load the module
             sw.Restart();
-            Console.WriteLine($"Code version: {pyEnv.GeneratorsSample().GetVersion()}");
+            Console.WriteLine($"Code version: {pythonEnv.GeneratorsSample().GetVersion()}");
             Console.WriteLine($"Module loaded in {sw.ElapsedMilliseconds} ms\n");
 
             // 5. Test the Python generator sample
-            TestProgressGenerator(pyEnv);
+            TestProgressGenerator(pythonEnv);
 
             // 6. Test the Python async generator sample with progress dots
-            await TestAsyncProgressBar(pyEnv);
+            await TestAsyncProgressBar(pythonEnv);
         }
 
-        static void TestProgressGenerator(IPythonEnvironment pyEnv)
+        static void TestProgressGenerator(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("Testing Python progress_generator...");
-            var generator = pyEnv.GeneratorsSample().ProgressGenerator();
+            var generator = pythonEnv.GeneratorsSample().ProgressGenerator();
             foreach (var progress in generator)
             {
                 Console.Write($"{progress} ");
@@ -66,7 +66,7 @@ namespace Generators_Sample
             Console.WriteLine("\nDone!");
         }
 
-        static async Task TestAsyncProgressBar(IPythonEnvironment pyEnv)
+        static async Task TestAsyncProgressBar(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("Testing Python async progress_generator_async...");
             using var cts = new CancellationTokenSource();
@@ -80,7 +80,7 @@ namespace Generators_Sample
             }, cts.Token);
 
             // Await the async generator from Python (fix: use AsAsyncEnumerable<int>())
-            var pyObj = await pyEnv.GeneratorsSample().AsyncProgressBar();
+            var pyObj = await pythonEnv.GeneratorsSample().AsyncProgressBar();
             foreach (var progress in pyObj.AsEnumerable<int>())
             {
                 if (progress % 10 == 0)

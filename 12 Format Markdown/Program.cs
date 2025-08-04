@@ -87,12 +87,12 @@ namespace Format_Markdown
             // ── 3. Warm-up: create env + install packages (idempotent) ─────────
             var sw = Stopwatch.StartNew();
             Console.WriteLine("Creating environment and installing packages...");
-            var pyEnv = app.Services.GetRequiredService<IPythonEnvironment>();
+            var pythonEnv = app.Services.GetRequiredService<IPythonEnvironment>();
             Console.WriteLine($"Done – {sw.ElapsedMilliseconds} ms\n");
 
             // ── 4. Show the version of the Python code and load the module ─────
             sw.Restart();
-            Console.WriteLine($"Code version: {pyEnv.FormatMarkdown().GetVersion()}");
+            Console.WriteLine($"Code version: {pythonEnv.FormatMarkdown().GetVersion()}");
             Console.WriteLine($"Module loaded in {sw.ElapsedMilliseconds} ms\n");
 
             // ── 5. Convert Markdown to PDF using Python interop ───────────────
@@ -124,7 +124,7 @@ namespace Format_Markdown
             }
 
             Console.WriteLine($"Converting {inputMd} to PDF with style {style.Name}...");
-            var pdfPath = pyEnv.FormatMarkdown().MarkdownToPdf(
+            var pdfPath = pythonEnv.FormatMarkdown().MarkdownToPdf(
                 inputMd, outputPdf, style.Primary, style.Secondary, style.Font, style.Margin, style.TableHeader);
             Console.WriteLine($"PDF generated at: {pdfPath}");
 

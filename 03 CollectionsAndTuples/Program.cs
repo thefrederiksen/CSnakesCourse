@@ -47,25 +47,25 @@ namespace CollectionsAndTuples
             var host = builder.Build();
             host.Start();
 
-            var env = host.Services.GetRequiredService<IPythonEnvironment>();
+            var pythonEnv = host.Services.GetRequiredService<IPythonEnvironment>();
 
             // Demo 1: Employee Processing
-            DemoEmployeeProcessing(env);
+            DemoEmployeeProcessing(pythonEnv);
 
             // Demo 2: Team Statistics
-            DemoTeamStatistics(env);
+            DemoTeamStatistics(pythonEnv);
 
             // Demo 3: Department Data Merging
-            DemoDepartmentMerging(env);
+            DemoDepartmentMerging(pythonEnv);
 
             // Demo 4: Optional Data Handling
-            DemoOptionalHandling(env);
+            DemoOptionalHandling(pythonEnv);
 
             // Demo 5: Complex Nested Structures
-            DemoNestedStructures(env);
+            DemoNestedStructures(pythonEnv);
 
             // Performance Demonstration
-            DemoPerformance(env);
+            DemoPerformance(pythonEnv);
 
             host.StopAsync();
             Console.WriteLine("\n✅ Lab 3 Complete! Collections mastered.");
@@ -76,7 +76,7 @@ namespace CollectionsAndTuples
         /// Shows marshaling of a list of tuples from C# to Python and back.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoEmployeeProcessing(IPythonEnvironment env)
+        static void DemoEmployeeProcessing(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 1: Employee Categorization ---");
 
@@ -97,7 +97,7 @@ namespace CollectionsAndTuples
             }
 
             // Call Python function - automatic marshaling!
-            IReadOnlyDictionary<string, string> categories = env.CollectionsDemo().ProcessEmployees(employees);
+            IReadOnlyDictionary<string, string> categories = pythonEnv.CollectionsDemo().ProcessEmployees(employees);
 
             Console.WriteLine("\nEmployee categories:");
             foreach (var kvp in categories)
@@ -112,7 +112,7 @@ namespace CollectionsAndTuples
         /// Passes a dictionary of team scores to Python and receives a dictionary of statistics.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoTeamStatistics(IPythonEnvironment env)
+        static void DemoTeamStatistics(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 2: Team Performance Statistics ---");
 
@@ -132,7 +132,7 @@ namespace CollectionsAndTuples
             }
 
             // Call Python - returns Dict[str, Tuple[float, int]]
-            var stats = env.CollectionsDemo().CalculateTeamStats(teamScores);
+            var stats = pythonEnv.CollectionsDemo().CalculateTeamStats(teamScores);
 
             Console.WriteLine("\nTeam statistics (average, count):");
             foreach (var kvp in stats)
@@ -147,7 +147,7 @@ namespace CollectionsAndTuples
         /// Combines a list of employees and a dictionary of salaries into enriched data.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoDepartmentMerging(IPythonEnvironment env)
+        static void DemoDepartmentMerging(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 3: Department Data Merging ---");
 
@@ -168,7 +168,7 @@ namespace CollectionsAndTuples
             Console.WriteLine("Merging employee data with salaries...");
 
             // Returns List[Tuple[str, int, float]] -> IReadOnlyList<(string, int, double)>
-            var enrichedData = env.CollectionsDemo().MergeDepartmentData(employees, salaries);
+            var enrichedData = pythonEnv.CollectionsDemo().MergeDepartmentData(employees, salaries);
 
             Console.WriteLine("Enriched employee data:");
             foreach (var (name, age, salary) in enrichedData)
@@ -183,7 +183,7 @@ namespace CollectionsAndTuples
         /// Passes a list of tuples with nullable values and receives processed results.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoOptionalHandling(IPythonEnvironment env)
+        static void DemoOptionalHandling(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 4: Optional/Nullable Data Handling ---");
 
@@ -202,7 +202,7 @@ namespace CollectionsAndTuples
                 Console.WriteLine($"  {name}: {(age?.ToString() ?? "null")}");
             }
 
-            var processed = env.CollectionsDemo().HandleOptionalData(mixedData);
+            var processed = pythonEnv.CollectionsDemo().HandleOptionalData(mixedData);
 
             Console.WriteLine("\nProcessed results:");
             foreach (var kvp in processed)
@@ -217,7 +217,7 @@ namespace CollectionsAndTuples
         /// Passes a dictionary of departments with employee details and receives a summary.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoNestedStructures(IPythonEnvironment env)
+        static void DemoNestedStructures(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 5: Complex Nested Structures ---");
 
@@ -253,7 +253,7 @@ namespace CollectionsAndTuples
                 Console.WriteLine($"  {dept.Key}: {dept.Value.Count} employees");
             }
 
-            IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> summary = env.CollectionsDemo().ProcessNestedStructures(departments);
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> summary = pythonEnv.CollectionsDemo().ProcessNestedStructures(departments);
 
             Console.WriteLine("\nDepartment summary:");
             foreach (var dept in summary)
@@ -272,7 +272,7 @@ namespace CollectionsAndTuples
         /// Measures and prints timing statistics for repeated calls to a Python function.
         /// </summary>
         /// <param name="env">The Python environment to use for interop.</param>
-        static void DemoPerformance(IPythonEnvironment env)
+        static void DemoPerformance(IPythonEnvironment pythonEnv)
         {
             Console.WriteLine("--- Demo 6: Performance Comparison ---");
 
@@ -286,7 +286,7 @@ namespace CollectionsAndTuples
             var stopwatch = Stopwatch.StartNew();
             for (int i = 0; i < 100; i++)
             {
-                var result = env.CollectionsDemo().ProcessEmployees(largeDatasetReadOnly);
+                var result = pythonEnv.CollectionsDemo().ProcessEmployees(largeDatasetReadOnly);
             }
             stopwatch.Stop();
 

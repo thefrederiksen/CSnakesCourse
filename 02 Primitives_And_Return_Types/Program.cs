@@ -82,109 +82,109 @@ class Program
         app.StopAsync().Wait();
     }
 
-    static void TestArithmeticOperations(IPythonEnvironment env)
+    static void TestArithmeticOperations(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing Arithmetic Operations ---");
 
         // Test add_numbers (int + float -> float)
-        var sum = env.Primitives().AddNumbers(42, 3.14f);
+        var sum = pythonEnv.Primitives().AddNumbers(42, 3.14f);
         Console.WriteLine($"add_numbers(42, 3.14): {sum} (Type: {sum.GetType().Name})");
 
         // Test multiply_integers (int * int -> int)
-        var product = env.Primitives().MultiplyIntegers(7, 8);
+        var product = pythonEnv.Primitives().MultiplyIntegers(7, 8);
         Console.WriteLine($"multiply_integers(7, 8): {product} (Type: {product.GetType().Name})");
 
         // Test divide_with_default (with default parameter)
-        var division1 = env.Primitives().DivideWithDefault(10);
+        var division1 = pythonEnv.Primitives().DivideWithDefault(10);
         Console.WriteLine($"divide_with_default(10): {division1} (using default divisor)");
 
-        var division2 = env.Primitives().DivideWithDefault(10, 3);
+        var division2 = pythonEnv.Primitives().DivideWithDefault(10, 3);
         Console.WriteLine($"divide_with_default(10, 3): {division2}");
 
         // Test division by zero handling
-        var divisionByZero = env.Primitives().DivideWithDefault(10, 0);
+        var divisionByZero = pythonEnv.Primitives().DivideWithDefault(10, 0);
         Console.WriteLine($"divide_with_default(10, 0): {divisionByZero} (should be Infinity)");
 
         Console.WriteLine();
     }
 
-    static void TestStringOperations(IPythonEnvironment env)
+    static void TestStringOperations(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing String Operations ---");
 
         // Test string concatenation
-        var greeting = env.Primitives().ConcatenateStrings("Hello, ", "CSnakes!");
+        var greeting = pythonEnv.Primitives().ConcatenateStrings("Hello, ", "CSnakes!");
         Console.WriteLine($"concatenate_strings('Hello, ', 'CSnakes!'): {greeting}");
 
         // Test string with international characters (more reliable than emojis)
-        var internationalChars = env.Primitives().ConcatenateStrings("Héllo: ", "Wörld! 你好");
+        var internationalChars = pythonEnv.Primitives().ConcatenateStrings("Héllo: ", "Wörld! 你好");
         Console.WriteLine($"concatenate_strings with international chars: {internationalChars}");
 
         // Test string with special characters
-        var specialChars = env.Primitives().ConcatenateStrings("Special: ", "!@#$%^&*()");
+        var specialChars = pythonEnv.Primitives().ConcatenateStrings("Special: ", "!@#$%^&*()");
         Console.WriteLine($"concatenate_strings with special chars: {specialChars}");
 
         Console.WriteLine();
     }
 
-    static void TestBooleanOperations(IPythonEnvironment env)
+    static void TestBooleanOperations(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing Boolean Operations ---");
 
         // Test boolean returns
-        var isPositive1 = env.Primitives().IsPositive(5.5);
+        var isPositive1 = pythonEnv.Primitives().IsPositive(5.5);
         Console.WriteLine($"is_positive(5.5): {isPositive1}");
 
-        var isPositive2 = env.Primitives().IsPositive(-2.1);
+        var isPositive2 = pythonEnv.Primitives().IsPositive(-2.1);
         Console.WriteLine($"is_positive(-2.1): {isPositive2}");
 
         // Test range validation with default parameters
-        var inRange1 = env.Primitives().ValidateRange(50);
+        var inRange1 = pythonEnv.Primitives().ValidateRange(50);
         Console.WriteLine($"validate_range(50): {inRange1} (using defaults 0-100)");
 
-        var inRange2 = env.Primitives().ValidateRange(150, 0, 100);
+        var inRange2 = pythonEnv.Primitives().ValidateRange(150, 0, 100);
         Console.WriteLine($"validate_range(150, 0, 100): {inRange2}");
 
-        var inRange3 = env.Primitives().ValidateRange(75, 50, 100);
+        var inRange3 = pythonEnv.Primitives().ValidateRange(75, 50, 100);
         Console.WriteLine($"validate_range(75, 50, 100): {inRange3}");
 
         Console.WriteLine();
     }
 
-    static void TestComplexFunction(IPythonEnvironment env)
+    static void TestComplexFunction(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing Complex Function with Multiple Types ---");
 
         // Test function with multiple parameter types
-        var greeting1 = env.Primitives().FormatGreeting("Alice", 25, 1.65f, true);
+        var greeting1 = pythonEnv.Primitives().FormatGreeting("Alice", 25, 1.65f, true);
         Console.WriteLine($"Student greeting: {greeting1}");
 
-        var greeting2 = env.Primitives().FormatGreeting("Bob", 35, 1.80f, false);
+        var greeting2 = pythonEnv.Primitives().FormatGreeting("Bob", 35, 1.80f, false);
         Console.WriteLine($"Professional greeting: {greeting2}");
 
         // Test percentage calculation
-        var percentage = env.Primitives().CalculatePercentage(75.0, 200.0);
+        var percentage = pythonEnv.Primitives().CalculatePercentage(75.0, 200.0);
         Console.WriteLine($"calculate_percentage(75, 200): {percentage}%");
 
         Console.WriteLine();
     }
 
-    static void TestDefaultParametersAndNullables(IPythonEnvironment env)
+    static void TestDefaultParametersAndNullables(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing Default Parameters and Nullable Types ---");
 
         // Test optional message function
-        var message1 = env.Primitives().GetOptionalMessage(true);
+        var message1 = pythonEnv.Primitives().GetOptionalMessage(true);
         Console.WriteLine($"get_optional_message(true): {message1 ?? "NULL"}");
 
-        var message2 = env.Primitives().GetOptionalMessage(false);
+        var message2 = pythonEnv.Primitives().GetOptionalMessage(false);
         Console.WriteLine($"get_optional_message(false): {message2 ?? "NULL"}");
 
         // Test nullable input processing
-        var result1 = env.Primitives().ProcessNullableInput(42);
+        var result1 = pythonEnv.Primitives().ProcessNullableInput(42);
         Console.WriteLine($"process_nullable_input(42): {result1}");
 
-        var result2 = env.Primitives().ProcessNullableInput(null);
+        var result2 = pythonEnv.Primitives().ProcessNullableInput(null);
         Console.WriteLine($"process_nullable_input(null): {result2}");
 
         // Demonstrate passing PyObject.None explicitly
@@ -192,7 +192,7 @@ class Program
         try
         {
             // This demonstrates how to pass None from C# to Python
-            var noneResult = env.Primitives().ProcessNullableInput(null);
+            var noneResult = pythonEnv.Primitives().ProcessNullableInput(null);
             Console.WriteLine($"Passing null from C# maps to None in Python: {noneResult}");
         }
         catch (Exception ex)
@@ -203,24 +203,24 @@ class Program
         Console.WriteLine();
     }
 
-    static void TestDateTimeFunctions(IPythonEnvironment env)
+    static void TestDateTimeFunctions(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing DateTime Functions ---");
 
         try
         {
             // Test GetCurrentTime() -> datetime (returns PyObject representing Python datetime)
-            PyObject currentTime = env.Primitives().GetCurrentTime();
+            PyObject currentTime = pythonEnv.Primitives().GetCurrentTime();
             Console.WriteLine($"GetCurrentTime(): {currentTime} (Type: {currentTime.GetType().Name})");
 
             // Test GetCurrentTimeAsText() -> string
-            var currentTimeText = env.Primitives().GetCurrentTimeAsText();
+            var currentTimeText = pythonEnv.Primitives().GetCurrentTimeAsText();
             Console.WriteLine($"GetCurrentTimeAsText(): {currentTimeText}");
 
             Console.WriteLine("\n--- Converting Python datetime to C# DateTime ---");
 
             // Method 1: Using CSnakes-generated C# wrapper (string approach)
-            var dtText = env.Primitives().GetCurrentTimeAsText();
+            var dtText = pythonEnv.Primitives().GetCurrentTimeAsText();
             DateTime dt = DateTime.Parse(dtText);
             Console.WriteLine($"Method 1 - Parse from string:");
             Console.WriteLine($"  Original string: {dtText}");
@@ -228,7 +228,7 @@ class Program
             Console.WriteLine($"  DateTime Kind: {dt.Kind}");
 
             // Method 2: For GetCurrentTime (returns PyObject), use PyObject methods
-            var pyDt = env.Primitives().GetCurrentTime();
+            var pyDt = pythonEnv.Primitives().GetCurrentTime();
             string dtIso = pyDt.GetAttr("isoformat").Call().As<string>();
             DateTime dtParsed = DateTime.Parse(dtIso);
             Console.WriteLine($"\nMethod 2 - PyObject isoformat:");
@@ -276,7 +276,7 @@ class Program
         Console.WriteLine();
     }
 
-    static void TestBytesInterop(IPythonEnvironment env)
+    static void TestBytesInterop(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing Bytes Interop ---");
         // Create a byte array with values 1-10
@@ -284,17 +284,17 @@ class Program
         Console.WriteLine($"Original bytes:   [{string.Join(", ", original)}]");
 
         // Call Python reverse_bytes
-        var reversed = env.Primitives().ReverseBytes(original);
+        var reversed = pythonEnv.Primitives().ReverseBytes(original);
         Console.WriteLine($"Reversed bytes:   [{string.Join(", ", reversed)}]");
         Console.WriteLine();
     }
 
-    static void TestWriteToFile(IPythonEnvironment env)
+    static void TestWriteToFile(IPythonEnvironment pythonEnv)
     {
         Console.WriteLine("--- Testing WriteToFile (void/None return) ---");
         string filename = "dummy.txt";
         string fileText = "This is a test file text.";
-        env.Primitives().WriteToFile(filename, fileText);
+        pythonEnv.Primitives().WriteToFile(filename, fileText);
         Console.WriteLine($"Called WriteToFile('{filename}', '{fileText}') in Python (no return value expected).");
         Console.WriteLine();
     }

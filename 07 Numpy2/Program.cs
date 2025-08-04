@@ -44,18 +44,18 @@ namespace Numpy2
 
             await host.StartAsync();
 
-            var env = host.Services.GetRequiredService<IPythonEnvironment>();
+            var pythonEnv = host.Services.GetRequiredService<IPythonEnvironment>();
             
 
             Console.WriteLine("== 2D Span ==");
-            var buf2D = env.NdArrayDemo().ExampleArray2d();
+            var buf2D = pythonEnv.NdArrayDemo().ExampleArray2d();
 
             ReadOnlySpan2D<int> mat = buf2D.AsInt32ReadOnlySpan2D();
             Console.WriteLine($"mat[0,0]: {mat[0, 0]}"); // 1
             Console.WriteLine($"mat[1,2]: {mat[1, 2]}"); // 6
 
             Console.WriteLine("\n== TensorSpan (N-Dimensional) ==");
-            var tensorBuf = env.NdArrayDemo().ExampleTensor();
+            var tensorBuf = pythonEnv.NdArrayDemo().ExampleTensor();
 
             var tensor = tensorBuf.AsInt32TensorSpan();
             Console.WriteLine($"tensor[0,0,0,0]: {tensor[0, 0, 0, 0]}"); // 1

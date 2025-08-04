@@ -44,8 +44,8 @@ namespace NumPy1
             using var host = builder.Build();
             await host.StartAsync();
 
-            var env = host.Services.GetRequiredService<IPythonEnvironment>();
-            var testModule = env.NumpyBuffer(); // Maps to numpy_buffer.py
+            var pythonEnv = host.Services.GetRequiredService<IPythonEnvironment>();
+            var testModule = pythonEnv.NumpyBuffer(); // Maps to numpy_buffer.py
 
             // Call example_array()
             IPyBuffer buffer = testModule.ExampleArray();
