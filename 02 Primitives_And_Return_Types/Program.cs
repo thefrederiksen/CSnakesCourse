@@ -37,11 +37,11 @@ class Program
 
         // Create the host with CSnakes configuration using ApplicationBuilder pattern
         var builder = Host.CreateApplicationBuilder(args);
-        var home = Environment.CurrentDirectory; // Path to your Python modules
+        var pythonHome = Environment.CurrentDirectory; // Path to your Python modules
 
         builder.Services
             .WithPython()
-            .WithHome(home)
+            .WithHome(pythonHome)
             .FromRedistributable(); // Download Python 3.12 and store it locally
 
         var app = builder.Build();

@@ -38,37 +38,45 @@ namespace CollectionsAndTuples
 
             // Create the host with CSnakes configuration using ApplicationBuilder pattern
             var builder = Host.CreateApplicationBuilder(args);
-            var home = Path.Join(Environment.CurrentDirectory, "."); // Path to your Python modules
+            var pythonHome = Environment.CurrentDirectory; // Path to your Python modules
             builder.Services
                 .WithPython()
-                .WithHome(home)
+                .WithHome(pythonHome)
                 .FromRedistributable();
 
-            var host = builder.Build();
-            host.Start();
+            try
+            {
+                var host = builder.Build();
+                host.Start();
 
-            var pythonEnv = host.Services.GetRequiredService<IPythonEnvironment>();
+                var pythonEnv = host.Services.GetRequiredService<IPythonEnvironment>();
 
-            // Demo 1: Employee Processing
-            DemoEmployeeProcessing(pythonEnv);
+                // Demo 1: Employee Processing
+                DemoEmployeeProcessing(pythonEnv);
 
-            // Demo 2: Team Statistics
-            DemoTeamStatistics(pythonEnv);
+                // Demo 2: Team Statistics
+                DemoTeamStatistics(pythonEnv);
 
-            // Demo 3: Department Data Merging
-            DemoDepartmentMerging(pythonEnv);
+                // Demo 3: Department Data Merging
+                DemoDepartmentMerging(pythonEnv);
 
-            // Demo 4: Optional Data Handling
-            DemoOptionalHandling(pythonEnv);
+                // Demo 4: Optional Data Handling
+                DemoOptionalHandling(pythonEnv);
 
-            // Demo 5: Complex Nested Structures
-            DemoNestedStructures(pythonEnv);
+                // Demo 5: Complex Nested Structures
+                DemoNestedStructures(pythonEnv);
 
-            // Performance Demonstration
-            DemoPerformance(pythonEnv);
+                // Performance Demonstration
+                DemoPerformance(pythonEnv);
 
-            host.StopAsync();
-            Console.WriteLine("\n✅ Lab 3 Complete! Collections mastered.");
+                host.StopAsync();
+                Console.WriteLine("\n✅ Lab 3 Complete! Collections mastered.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n❌ Error during collections demo: {ex.Message}");
+                Console.WriteLine("This could be due to Python environment issues or missing modules.");
+            }
         }
 
         /// <summary>
@@ -221,11 +229,7 @@ namespace CollectionsAndTuples
         {
             Console.WriteLine("--- Demo 5: Complex Nested Structures ---");
 
-            // Complex nested structure: departments with employee details
-            //
-            // Dictionary key: Department name (string)
-            // Value: List of tuples, each representing an employee:
-            //   (string name, long age, double salary)
+            // Department → List of (name, age, salary)
             var departments = new Dictionary<string, IReadOnlyList<(string, long, double)>>
             {
                 ["Engineering"] = new List<(string, long, double)>

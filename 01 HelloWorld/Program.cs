@@ -18,19 +18,27 @@ namespace HelloWorld
     {
         static void Main(string[] args)
         {
-            var builder = Host.CreateApplicationBuilder(args);
-            var home = Environment.CurrentDirectory; /* Path to your Python modules */
-            builder.Services
-                .WithPython()
-                .WithHome(home)
-                .FromRedistributable(); // Download Python 3.12 and store it locally
+            try
+            {
+                var builder = Host.CreateApplicationBuilder(args);
+                var pythonHome = Environment.CurrentDirectory; /* Path to your Python modules */
+                builder.Services
+                    .WithPython()
+                    .WithHome(pythonHome)
+                    .FromRedistributable(); // Download Python 3.12 and store it locally
 
-            var app = builder.Build();
+                var app = builder.Build();
 
-            // Ensure the IPythonEnvironment interface is defined and the required package is referenced
-            IPythonEnvironment pythonEnv = app.Services.GetRequiredService<IPythonEnvironment>();
-            var msg = pythonEnv.Hello().HelloWorld("Soren");
-            Console.WriteLine(msg);
+                // Ensure the IPythonEnvironment interface is defined and the required package is referenced
+                IPythonEnvironment pythonEnv = app.Services.GetRequiredService<IPythonEnvironment>();
+                var msg = pythonEnv.Hello().HelloWorld("Soren");
+                Console.WriteLine(msg);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                Console.WriteLine("This could happen if Python isn't available or if the Python module has errors.");
+            }
         }
     }
 }
