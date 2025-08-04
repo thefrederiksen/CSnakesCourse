@@ -25,7 +25,7 @@ class Program
 
         // Create the host with CSnakes configuration using ApplicationBuilder pattern
         var builder = Host.CreateApplicationBuilder(args);
-        var home = Path.Join(Environment.CurrentDirectory, "."); // Path to your Python modules
+        var home = Environment.CurrentDirectory; // Path to your Python modules
 
         builder.Services
             .WithPython()
@@ -105,8 +105,8 @@ class Program
         Console.WriteLine($"concatenate_strings('Hello, ', 'CSnakes!'): {greeting}");
 
         // Test string with international characters (more reliable than emojis)
-        var international = env.Primitives().ConcatenateStrings("Héllo: ", "Wörld! 你好");
-        Console.WriteLine($"concatenate_strings with international chars: {international}");
+        var internationalChars = env.Primitives().ConcatenateStrings("Héllo: ", "Wörld! 你好");
+        Console.WriteLine($"concatenate_strings with international chars: {internationalChars}");
 
         // Test string with special characters
         var specialChars = env.Primitives().ConcatenateStrings("Special: ", "!@#$%^&*()");

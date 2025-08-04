@@ -22,7 +22,8 @@
       "Bash(if [ -f \"G2. BlazorTrader.csproj.user\" ])",
       "Bash(then mv \"G2. BlazorTrader.csproj.user\" \"BlazorTrader.csproj.user\")",
       "Bash(fi)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }
