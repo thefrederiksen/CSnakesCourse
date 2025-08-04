@@ -2,8 +2,11 @@
 
 def process_employees(employees: List[Tuple[str, int]]) -> Dict[str, str]:
     """
-    Takes a list of (name, age) tuples and returns employee categories
-    Demonstrates: List[Tuple] -> Dict marshaling
+    Takes a list of (name, age) tuples and returns employee categories.
+    
+    CSnakes Type Mapping:
+    - employees: List[Tuple[str, int]] (Python) → List<(string, long)> (C#)
+    - return: Dict[str, str] (Python) → Dictionary<string, string> (C#)
     """
     categories = {}
     for name, age in employees:
@@ -17,8 +20,11 @@ def process_employees(employees: List[Tuple[str, int]]) -> Dict[str, str]:
 
 def calculate_team_stats(team_scores: Dict[str, List[float]]) -> Dict[str, Tuple[float, int]]:
     """
-    Takes team names mapped to score lists, returns (average, count) for each team
-    Demonstrates: Nested collections and tuple returns
+    Takes team names mapped to score lists, returns (average, count) for each team.
+    
+    CSnakes Type Mapping:
+    - team_scores: Dict[str, List[float]] (Python) → Dictionary<string, IReadOnlyList<double>> (C#)
+    - return: Dict[str, Tuple[float, int]] (Python) → Dictionary<string, (double, long)> (C#)
     """
     stats = {}
     for team_name, scores in team_scores.items():

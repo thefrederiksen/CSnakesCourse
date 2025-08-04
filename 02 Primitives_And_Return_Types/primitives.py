@@ -7,14 +7,21 @@ from datetime import datetime
 def add_numbers(a: int, b: float) -> float:
     """
     Add an integer and a float, returning a float.
-    Demonstrates int -> long and float -> double mapping in C#.
+    
+    CSnakes Type Mapping:
+    - a: int (Python) → long (C#)
+    - b: float (Python) → double (C#)  
+    - return: float (Python) → double (C#)
     """
     return a + b
 
 def concatenate_strings(s1: str, s2: str) -> str:
     """
     Concatenate two strings.
-    Demonstrates string -> string mapping in C#.
+    
+    CSnakes Type Mapping:
+    - s1, s2: str (Python) → string (C#)
+    - return: str (Python) → string (C#)
     """
     return s1 + s2
 
@@ -52,8 +59,11 @@ def divide_with_default(dividend: int, divisor: int = 2) -> float:
 def get_optional_message(include_message: bool = True) -> Optional[str]:
     """
     Return a message or None based on the parameter.
-    Demonstrates Python None return values mapping to C# nullable types.
-    Uses Optional[str] for compatibility with Python 3.9+.
+    
+    CSnakes Type Mapping:
+    - include_message: bool (Python) → bool (C#)
+    - return: Optional[str] (Python) → string? (C#)
+    - None (Python) → null (C#)
     """
     if include_message:
         return "This is an optional message!"

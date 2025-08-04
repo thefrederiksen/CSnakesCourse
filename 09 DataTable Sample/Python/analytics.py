@@ -6,8 +6,11 @@ def revenue_by_region_category(
 ) -> List[Dict[str, object]]:
     """
     Build a Region × Category pivot table of total Revenue.
-
-    Returns a list[dict] so C# can drop it straight back into a DataTable.
+    
+    CSnakes Type Mapping:
+    - rows: List[Dict[str, object]] (Python) ← DataTable rows (C#)
+    - return: List[Dict[str, object]] (Python) → DataTable compatible (C#)
+    - Demonstrates DataTable ↔ pandas DataFrame conversion
     """
     df = pd.DataFrame(rows)
 
