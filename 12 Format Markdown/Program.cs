@@ -6,6 +6,17 @@ using System.IO;
 
 namespace Format_Markdown
 {
+    /// <summary>
+    /// CSnakes Course - Document Processing & Formatting
+    /// 
+    /// Learning Objectives:
+    /// - Process text and markdown files using Python libraries
+    /// - Generate formatted documents (HTML, PDF) from Python
+    /// - Handle file I/O operations between C# and Python
+    /// - Work with Python document processing libraries
+    /// - Convert between different document formats
+    /// - Manage complex Python library dependencies
+    /// </summary>
     internal class Program
     {
         // 10 style presets

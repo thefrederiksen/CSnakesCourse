@@ -6,6 +6,18 @@ using System.Diagnostics;
 
 namespace BlazorTrader
 {
+    /// <summary>
+    /// CSnakes Course - Advanced Project: BlazorTrader
+    /// 
+    /// Learning Objectives:
+    /// - Build a production-ready application using CSnakes
+    /// - Integrate Python ML pipeline with Blazor web application
+    /// - Manage complex Python dependencies (XGBoost, pandas, yfinance)
+    /// - Handle real-time data processing and predictions
+    /// - Use virtual environments and package management
+    /// - Implement async operations between C# and Python
+    /// - Create interactive web UI consuming Python-generated data
+    /// </summary>
     public class Program
     {
         public static void Main(string[] args)

@@ -5,6 +5,16 @@ using Microsoft.Extensions.Logging;
 
 namespace HelloWorld.Tests;
 
+/// <summary>
+/// CSnakes Course - Unit Testing with Python Integration
+/// 
+/// Learning Objectives:
+/// - Write unit tests for CSnakes applications
+/// - Set up Python environment in test context
+/// - Handle test isolation with Python runtime
+/// - Test Python function calls from C# unit tests
+/// - Manage test lifecycle with Python dependencies
+/// </summary>
 [TestClass]
 [DoNotParallelize] // Prevent parallel execution to avoid Python runtime conflicts
 public class HelloWorldTests

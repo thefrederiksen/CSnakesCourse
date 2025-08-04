@@ -8,6 +8,17 @@ using System.Threading.Tasks;
 
 namespace NumPy1
 {
+    /// <summary>
+    /// CSnakes Course - NumPy Integration Part 1
+    /// 
+    /// Learning Objectives:
+    /// - Set up NumPy with CSnakes using virtual environments
+    /// - Share memory buffers between C# and Python (zero-copy)
+    /// - Work with multi-dimensional arrays across languages
+    /// - Understand performance benefits of buffer sharing
+    /// - Handle NumPy array creation and manipulation from C#
+    /// - Measure performance of data transfer operations
+    /// </summary>
     class Program
     {
         static async Task Main(string[] args)

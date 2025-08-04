@@ -5,6 +5,17 @@ using System.Diagnostics;
 
 namespace Generators_Sample
 {
+    /// <summary>
+    /// CSnakes Course - Python Generators & Iterators
+    /// 
+    /// Learning Objectives:
+    /// - Work with Python generators from C#
+    /// - Handle lazy evaluation and streaming data
+    /// - Iterate over Python generator objects
+    /// - Understand memory efficiency of generators
+    /// - Process large datasets without loading all data
+    /// - Compare Python generators to C# IEnumerable
+    /// </summary>
     internal class Program
     {
         static async Task Main(string[] args)

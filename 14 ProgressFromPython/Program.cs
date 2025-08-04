@@ -4,6 +4,17 @@ using Microsoft.Extensions.Hosting;
 
 namespace ProgressFromPython
 {
+    /// <summary>
+    /// CSnakes Course - Progress Reporting & Callbacks
+    /// 
+    /// Learning Objectives:
+    /// - Implement progress reporting from Python to C#
+    /// - Handle callback functions across language boundaries
+    /// - Use Progress<T> with Python operations
+    /// - Update UI with real-time progress from Python
+    /// - Handle long-running Python operations with feedback
+    /// - Implement cancellation and progress patterns
+    /// </summary>
     internal class Program
     {
         static async Task Main(string[] args)

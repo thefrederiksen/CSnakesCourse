@@ -6,6 +6,17 @@ using System.Threading;
 
 namespace Async_Python
 {
+    /// <summary>
+    /// CSnakes Course - Asynchronous Python Operations
+    /// 
+    /// Learning Objectives:
+    /// - Execute long-running Python operations asynchronously
+    /// - Handle async/await patterns with Python integration
+    /// - Manage concurrency between C# and Python threads
+    /// - Use CancellationToken with Python operations
+    /// - Implement timeout handling for Python calls
+    /// - Understand thread safety with Python runtime
+    /// </summary>
     internal class Program
     {
         static async Task Main(string[] args)

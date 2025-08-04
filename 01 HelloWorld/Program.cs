@@ -4,6 +4,16 @@ using Microsoft.Extensions.Hosting;
 
 namespace HelloWorld
 {
+    /// <summary>
+    /// CSnakes Course - Hello World
+    /// 
+    /// Learning Objectives:
+    /// - Set up a basic CSnakes environment
+    /// - Import a Python module from C#  
+    /// - Call a simple Python function with parameters
+    /// - Understand automatic string marshaling between C# and Python
+    /// - Use redistributable Python for easy deployment
+    /// </summary>
     internal class Program
     {
         static void Main(string[] args)

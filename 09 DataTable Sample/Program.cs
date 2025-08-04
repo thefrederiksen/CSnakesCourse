@@ -8,6 +8,17 @@ using System.Diagnostics;
 
 namespace DataTable_Sample
 {
+    /// <summary>
+    /// CSnakes Course - DataTable Integration
+    /// 
+    /// Learning Objectives:
+    /// - Convert .NET DataTable to Python DataFrame
+    /// - Transfer structured data between C# and Python
+    /// - Work with pandas DataFrames from C#
+    /// - Handle data type mapping in tabular data
+    /// - Perform data analysis operations using Python libraries
+    /// - Return processed data back to C#
+    /// </summary>
     internal class Program
     {
         static void Main(string[] args)

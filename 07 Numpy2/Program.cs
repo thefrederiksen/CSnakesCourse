@@ -7,6 +7,17 @@ using System.Numerics.Tensors; // .NET 9 feature
 
 namespace Numpy2
 {
+    /// <summary>
+    /// CSnakes Course - NumPy Integration Part 2
+    /// 
+    /// Learning Objectives:
+    /// - Advanced NumPy array operations and multi-dimensional data
+    /// - Use .NET 9 Tensor operations with Python NumPy
+    /// - High-performance computing with CommunityToolkit.HighPerformance
+    /// - Compare performance between .NET and Python implementations
+    /// - Work with complex mathematical operations across languages
+    /// - Handle memory-intensive array operations efficiently
+    /// </summary>
     class Program
     {
         static async Task Main(string[] args)

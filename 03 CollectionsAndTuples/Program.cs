@@ -6,6 +6,17 @@ using CSnakes.Runtime;
 
 namespace CollectionsAndTuples
 {
+    /// <summary>
+    /// CSnakes Course - Collections & Tuples
+    /// 
+    /// Learning Objectives:
+    /// - Marshal collections between C# and Python (List, Dictionary, etc.)
+    /// - Work with tuples and complex nested data structures
+    /// - Handle optional/nullable data in collections
+    /// - Understand performance implications of data marshaling
+    /// - Process real-world data scenarios (employees, sales, etc.)
+    /// - Compare C# vs Python collection processing approaches
+    /// </summary>
     public class Program
     {
         /// <summary>

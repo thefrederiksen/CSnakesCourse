@@ -7,6 +7,18 @@ using System.Globalization;
 
 namespace CSnakesLab2;
 
+/// <summary>
+/// CSnakes Course - Primitives & Return Types
+/// 
+/// Learning Objectives:
+/// - Understand C# ↔ Python primitive type mapping (int→long, float→double, etc.)
+/// - Work with strings, booleans, and numeric types across languages
+/// - Handle default parameters and optional values
+/// - Use nullable types and None values
+/// - Work with DateTime objects and conversion strategies
+/// - Understand bytes interop between C# and Python
+/// - Handle void/None returning functions
+/// </summary>
 class Program
 {
     static void Main(string[] args)

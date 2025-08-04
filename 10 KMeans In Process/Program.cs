@@ -11,6 +11,17 @@ using System.Diagnostics;
 
 namespace KMeans_In_Process
 {
+    /// <summary>
+    /// CSnakes Course - Machine Learning with scikit-learn
+    /// 
+    /// Learning Objectives:
+    /// - Use scikit-learn machine learning library from C#
+    /// - Implement K-Means clustering in Python from .NET
+    /// - Handle ML model training and prediction workflows
+    /// - Work with NumPy arrays for ML data processing
+    /// - Compare in-process ML vs external service approaches
+    /// - Understand performance benefits of embedded Python ML
+    /// </summary>
     internal class Program
     {
         static void Main(string[] args)

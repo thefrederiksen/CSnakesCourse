@@ -6,14 +6,15 @@ using System.Text.Json;
 namespace CSnakesExceptions
 {
     /// <summary>
-    /// Comprehensive Exception Handling Demo for CSnakes
+    /// CSnakes Course - Exception Handling
     /// 
-    /// This program demonstrates:
-    /// 1. Basic Python exceptions (ZeroDivisionError, TypeError)
-    /// 2. Catching and analyzing Python stack traces in C#
-    /// 3. Handling custom Python exception types
-    /// 4. Exception chaining and context preservation
-    /// 5. Best practices for Python-C# error handling
+    /// Learning Objectives:
+    /// - Handle Python exceptions in C# code (ZeroDivisionError, TypeError, etc.)
+    /// - Catch and analyze Python stack traces from C#
+    /// - Work with custom Python exception types
+    /// - Understand exception chaining and context preservation
+    /// - Implement best practices for cross-language error handling
+    /// - Debug complex Python errors from the C# side
     /// </summary>
     internal class Program
     {

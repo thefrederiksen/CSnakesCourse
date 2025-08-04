@@ -8,6 +8,17 @@ using System.Diagnostics;
 
 namespace Managing_Python
 {
+    /// <summary>
+    /// CSnakes Course - Managing Python Environments
+    /// 
+    /// Learning Objectives:
+    /// - Configure different Python locator strategies
+    /// - Work with virtual environments and package management
+    /// - Install Python packages programmatically using UV
+    /// - Handle Python environment validation and error handling
+    /// - Choose appropriate Python deployment strategies
+    /// - Use redistributable vs system Python installations
+    /// </summary>
     class Program
     {
         public static void Main(string[] args)
