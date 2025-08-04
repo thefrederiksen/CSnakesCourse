@@ -34,8 +34,7 @@ namespace CSnakesExceptions
             Console.WriteLine("=== CSnakes Exception Handling Demo ===\n");
 
             // ===== BASIC EXCEPTION DEMOS =====
-            Console.WriteLine("PART 1: BASIC EXCEPTION HANDLING");
-            Console.WriteLine("================================\n");
+            Console.WriteLine("--- PART 1: BASIC EXCEPTION HANDLING ---\n");
 
             // Demo 1: Basic ZeroDivisionError
             DemoBasicDivisionByZero(pythonEnv);
@@ -44,8 +43,7 @@ namespace CSnakesExceptions
             DemoTypeMismatch(pythonEnv);
 
             // ===== ADVANCED EXCEPTION DEMOS =====
-            Console.WriteLine("\n\nPART 2: ADVANCED EXCEPTION HANDLING");
-            Console.WriteLine("===================================\n");
+            Console.WriteLine("\n--- PART 2: ADVANCED EXCEPTION HANDLING ---\n");
 
             // Demo 3: Exception with detailed stack trace
             DemoExceptionWithStackTrace(pythonEnv);

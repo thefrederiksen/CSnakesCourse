@@ -67,8 +67,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoEmployeeProcessing(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 1: Employee Categorization");
-            Console.WriteLine("--------------------------------");
+            Console.WriteLine("--- Demo 1: Employee Categorization ---");
 
             // Create sample employee data (name, age)
             var employees = new List<(string, long)>
@@ -104,8 +103,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoTeamStatistics(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 2: Team Performance Statistics");
-            Console.WriteLine("-----------------------------------");
+            Console.WriteLine("--- Demo 2: Team Performance Statistics ---");
 
             // Complex nested collections
             var teamScores = new Dictionary<string, IReadOnlyList<double>>
@@ -140,8 +138,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoDepartmentMerging(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 3: Department Data Merging");
-            Console.WriteLine("-------------------------------");
+            Console.WriteLine("--- Demo 3: Department Data Merging ---");
 
             var employees = new List<(string, long)>
             {
@@ -177,8 +174,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoOptionalHandling(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 4: Optional/Nullable Data Handling");
-            Console.WriteLine("---------------------------------------");
+            Console.WriteLine("--- Demo 4: Optional/Nullable Data Handling ---");
 
             // Demonstrate nullable handling
             var mixedData = new List<(string, long?)>
@@ -212,8 +208,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoNestedStructures(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 5: Complex Nested Structures");
-            Console.WriteLine("---------------------------------");
+            Console.WriteLine("--- Demo 5: Complex Nested Structures ---");
 
             // Complex nested structure: departments with employee details
             //
@@ -268,8 +263,7 @@ namespace CollectionsAndTuples
         /// <param name="env">The Python environment to use for interop.</param>
         static void DemoPerformance(IPythonEnvironment env)
         {
-            Console.WriteLine("Demo 6: Performance Comparison");
-            Console.WriteLine("------------------------------");
+            Console.WriteLine("--- Demo 6: Performance Comparison ---");
 
             var largeDataset = Enumerable.Range(1, 1000)
                 .Select(i => ($"Employee_{i}", 20L + (i % 30)))
