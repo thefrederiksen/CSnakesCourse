@@ -9,7 +9,7 @@ namespace HelloWorld
         static void Main(string[] args)
         {
             var builder = Host.CreateApplicationBuilder(args);
-            var home = Path.Join(Environment.CurrentDirectory, "."); /* Path to your Python modules */
+            var home = Environment.CurrentDirectory; /* Path to your Python modules */
             builder.Services
                 .WithPython()
                 .WithHome(home)
