@@ -50,31 +50,50 @@ dotnet --version
 # Should show 9.0.x or later
 ```
 
-### 2. Install Python 3.9+
+### 2. Install Python 3.12 (Required)
 
-Most Linux distributions come with Python 3, but ensure you have 3.9+:
+**IMPORTANT: This course requires Python 3.12 specifically.**
+
+While CSnakes supports Python 3.9-3.13, this course standardizes on **Python 3.12** because:
+- The course projects use `FromRedistributable()` which downloads Python 3.12
+- Build-time binding generation needs a matching Python version
+- Mixing Python versions causes initialization errors
+
+**For teams/organizations:** Install Python 3.12 on all developer machines and build servers.
 
 #### Ubuntu/Debian
 ```bash
+# Add deadsnakes PPA for Python 3.12 (if not available in default repos)
+sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt update
-sudo apt install python3 python3-pip python3-venv
+sudo apt install python3.12 python3.12-venv python3.12-dev
+
+# Make python3 point to 3.12
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 ```
 
 #### Fedora
 ```bash
-sudo dnf install python3 python3-pip
+sudo dnf install python3.12 python3.12-pip
 ```
 
 #### Arch Linux
 ```bash
+# Arch typically has latest Python
 sudo pacman -S python python-pip
 ```
+
+**WARNING: Do NOT set PYTHONPATH or PYTHONHOME**
+
+Do not manually set the `PYTHONPATH` or `PYTHONHOME` environment variables. CSnakes manages Python paths automatically. Setting these variables to a different Python version will cause fatal initialization errors.
 
 Verify installation:
 ```bash
 python3 --version
-# Should show Python 3.9.x or later
+# Must show Python 3.12.x specifically
 ```
+
+If you see a different version, ensure Python 3.12 is first in your PATH or update alternatives.
 
 ### 3. Install VS Code
 
@@ -212,11 +231,43 @@ code .
 
 ### Python Command Issues
 ```bash
-# Create python symlink if needed
-sudo ln -s /usr/bin/python3 /usr/bin/python
+# Create python symlink pointing to Python 3.12
+sudo ln -s /usr/bin/python3.12 /usr/bin/python
 
 # Or use alternatives
-sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+
+# Verify version
+python --version
+# Must show 3.12.x
+```
+
+### PYTHONPATH/PYTHONHOME Conflict
+If you see errors like `ModuleNotFoundError: No module named 'encodings'`:
+
+```bash
+# Check if these variables are set
+echo $PYTHONPATH
+echo $PYTHONHOME
+
+# If set, unset them
+unset PYTHONPATH
+unset PYTHONHOME
+
+# Remove from shell config files (~/.bashrc, ~/.zshrc, /etc/environment) if present
+# Then restart your terminal or source the config file
+```
+
+### Wrong Python Version
+If `python3 --version` shows something other than 3.12:
+```bash
+# Check installed versions
+ls /usr/bin/python*
+
+# Update alternatives to use 3.12
+sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 2
+sudo update-alternatives --config python3
+# Select python3.12 from the menu
 ```
 
 ### Permission Issues

@@ -22,23 +22,39 @@ dotnet --version
 # Should show 9.0.x or later
 ```
 
-### 2. Install Python 3.9+
+### 2. Install Python 3.12 (Required)
 
-macOS typically comes with Python, but you'll want to ensure you have Python 3.9 or later:
+**IMPORTANT: This course requires Python 3.12 specifically.**
+
+While CSnakes supports Python 3.9-3.13, this course standardizes on **Python 3.12** because:
+- The course projects use `FromRedistributable()` which downloads Python 3.12
+- Build-time binding generation needs a matching Python version
+- Mixing Python versions causes initialization errors
+
+**For teams/organizations:** Install Python 3.12 on all developer machines and build servers.
 
 ```bash
 # Using Homebrew (recommended)
 brew install python@3.12
 
+# Make sure python3 points to 3.12
+brew link python@3.12
+
 # Or download from python.org:
-# https://www.python.org/downloads/
+# https://www.python.org/downloads/release/python-3129/
 ```
+
+**WARNING: Do NOT set PYTHONPATH or PYTHONHOME**
+
+Do not manually set the `PYTHONPATH` or `PYTHONHOME` environment variables. CSnakes manages Python paths automatically. Setting these variables to a different Python version will cause fatal initialization errors.
 
 Verify installation:
 ```bash
 python3 --version
-# Should show Python 3.9.x or later
+# Must show Python 3.12.x specifically
 ```
+
+If you see a different version, ensure Python 3.12 is first in your PATH.
 
 ### 3. Install Visual Studio for Mac or VS Code
 
@@ -136,11 +152,40 @@ dotnet run
 ### Python Not Found
 If CSnakes can't find Python:
 ```bash
-# Create a symbolic link for python
-sudo ln -s /usr/local/bin/python3 /usr/local/bin/python
+# Create a symbolic link for python (ensure it points to Python 3.12)
+sudo ln -s /usr/local/bin/python3.12 /usr/local/bin/python
 
-# Or set the PYTHON_HOME environment variable
-export PYTHON_HOME=/usr/local/bin/python3
+# Verify the version
+python --version
+# Must show 3.12.x
+```
+
+### PYTHONPATH/PYTHONHOME Conflict
+If you see errors like `ModuleNotFoundError: No module named 'encodings'`:
+
+```bash
+# Check if these variables are set
+echo $PYTHONPATH
+echo $PYTHONHOME
+
+# If set, unset them
+unset PYTHONPATH
+unset PYTHONHOME
+
+# Remove from shell config files (~/.zshrc, ~/.bashrc) if present
+```
+
+### Wrong Python Version
+If `python3 --version` shows something other than 3.12:
+```bash
+# Check which Python versions are installed
+ls /usr/local/bin/python*
+
+# Update PATH to prioritize 3.12
+export PATH="/usr/local/opt/python@3.12/bin:$PATH"
+
+# Add to ~/.zshrc for persistence
+echo 'export PATH="/usr/local/opt/python@3.12/bin:$PATH"' >> ~/.zshrc
 ```
 
 ### Permission Issues

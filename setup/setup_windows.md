@@ -21,24 +21,38 @@ dotnet --version
 ```
 You should see version 9.0.0 or later.
 
-### 2. Python 3.9 or Later
+### 2. Python 3.12 (Required)
 
-CSnakes supports Python versions 3.9 through 3.13. We recommend installing the latest stable Python version.
+**IMPORTANT: This course requires Python 3.12 specifically.**
+
+While CSnakes supports Python 3.9-3.13, this course standardizes on **Python 3.12** because:
+- The course projects use `FromRedistributable()` which downloads Python 3.12
+- Build-time binding generation needs a matching Python version
+- Mixing Python versions causes initialization errors that are difficult to debug
+
+**For teams/organizations:** Install Python 3.12 on all developer machines and build servers to ensure consistency.
 
 **Download and Install:**
-- Visit [python.org](https://www.python.org/downloads/)
-- Download Python 3.12 or later (recommended)
-- During installation on Windows, make sure to check "Add Python to PATH"
+- Visit [Python 3.12 download page](https://www.python.org/downloads/release/python-3129/)
+- Download **Python 3.12.9** (or latest 3.12.x)
+- During installation: **CHECK "Add Python to PATH"**
+
+**WARNING: Do NOT set PYTHONPATH or PYTHONHOME**
+
+Do not manually set the `PYTHONPATH` or `PYTHONHOME` environment variables. CSnakes manages Python paths automatically. Setting these variables (especially to a different Python version) will cause fatal initialization errors like:
+```
+ModuleNotFoundError: No module named 'encodings'
+```
+
+If you have these variables set from a previous Python installation, remove them before running the course projects. See the Troubleshooting section for instructions.
 
 **Verify Installation:**
 ```bash
 python --version
 ```
-or
-```bash
-python3 --version
-```
-You should see version 3.9.0 or later.
+You should see **Python 3.12.x** specifically. If you see a different version (e.g., 3.11, 3.10), you need to either:
+- Uninstall the old version and install Python 3.12
+- Update your PATH to point to Python 3.12
 
 ### 3. Development Environment
 
@@ -163,15 +177,51 @@ Each project can be run independently:
 - Most projects handle this automatically via CSnakes
 - For projects with requirements.txt, manually install: `pip install -r requirements.txt`
 
+### PYTHONPATH/PYTHONHOME Conflict
+
+If you see errors like:
+```
+Fatal Python error: init_fs_encoding: failed to get the Python codec of the filesystem encoding
+ModuleNotFoundError: No module named 'encodings'
+```
+
+This means you have a `PYTHONPATH` or `PYTHONHOME` environment variable pointing to a different Python version than 3.12.
+
+**To fix this:**
+
+1. Open PowerShell and check if these variables are set:
+   ```powershell
+   [System.Environment]::GetEnvironmentVariable('PYTHONPATH', 'User')
+   [System.Environment]::GetEnvironmentVariable('PYTHONPATH', 'Machine')
+   [System.Environment]::GetEnvironmentVariable('PYTHONHOME', 'User')
+   [System.Environment]::GetEnvironmentVariable('PYTHONHOME', 'Machine')
+   ```
+
+2. Remove any that return a value:
+   ```powershell
+   # Remove user-level (most common)
+   [System.Environment]::SetEnvironmentVariable('PYTHONPATH', '', 'User')
+   [System.Environment]::SetEnvironmentVariable('PYTHONHOME', '', 'User')
+
+   # Remove machine-level (requires Admin PowerShell)
+   [System.Environment]::SetEnvironmentVariable('PYTHONPATH', '', 'Machine')
+   [System.Environment]::SetEnvironmentVariable('PYTHONHOME', '', 'Machine')
+   ```
+
+3. **Restart Visual Studio** - environment variable changes require a restart.
+
+### Wrong Python Version
+
+If `python --version` shows a version other than 3.12:
+- Uninstall other Python versions, or
+- Ensure Python 3.12 appears first in your PATH environment variable
+
 ### Platform-Specific Notes:
 
 **Windows:**
-- Make sure Python was added to PATH during installation
+- Make sure Python 3.12 was added to PATH during installation
 - You may need to restart your terminal/IDE after installing Python
-
-**macOS/Linux:**
-- You might need to use `python3` and `pip3` commands instead of `python` and `pip`
-- Ensure you have the development headers installed for your Python version
+- Do NOT set PYTHONPATH or PYTHONHOME environment variables
 
 ## Next Steps
 

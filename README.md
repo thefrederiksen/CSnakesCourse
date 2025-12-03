@@ -30,6 +30,17 @@ This hands-on course takes you through **15 progressive projects** that demonstr
 
 ---
 
+## 👥 Target Audience
+
+This course is designed for:
+
+- **.NET Developers** looking to leverage the rich Python ecosystem without leaving C#.
+- **Full-Stack Engineers** building high-performance applications that require both .NET's robustness and Python's data science capabilities.
+- **Technical Architects** evaluating cross-language interoperability solutions for enterprise systems.
+- **Python Developers** interested in integrating their scripts and models into production .NET environments.
+
+---
+
 ## 📋 Setup Instructions
 
 Choose your platform for detailed setup instructions:

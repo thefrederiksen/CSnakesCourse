@@ -9,9 +9,9 @@ namespace CSnakesLab2;
 
 /// <summary>
 /// CSnakes Course - Primitives & Return Types
-/// 
+///
 /// Learning Objectives:
-/// - Understand C# ↔ Python primitive type mapping (int→long, float→double, etc.)
+/// - Understand C# to Python primitive type mapping (int to long, float to double, etc.)
 /// - Work with strings, booleans, and numeric types across languages
 /// - Handle default parameters and optional values
 /// - Use nullable types and None values
@@ -21,6 +21,9 @@ namespace CSnakesLab2;
 /// </summary>
 class Program
 {
+    // Explicitly specify Python version - keep consistent across all course projects
+    private const string PythonVersion = "3.12";
+
     static void Main(string[] args)
     {
         // Set console encoding to UTF-8 for proper character display
@@ -42,7 +45,7 @@ class Program
         builder.Services
             .WithPython()
             .WithHome(pythonHome)
-            .FromRedistributable(); // Download Python 3.12 and store it locally
+            .FromRedistributable(PythonVersion); // Download Python 3.12 and cache locally
 
         var app = builder.Build();
 

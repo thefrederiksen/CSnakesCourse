@@ -1,0 +1,20 @@
+{
+        "folders": [
+                {
+                        "path": "."
+                },
+                {
+                        "path": "D:\\ReposFred\\CenterConsulting\\Courses\\CSnakes\\Supporting Documents\\Lab Narratives"
+                }
+        ],
+        "settings": {
+                "workbench.colorCustomizations": {
+                        "titleBar.activeBackground": "#2deb07",
+                        "titleBar.activeForeground": "#ffffff",
+                        "titleBar.inactiveBackground": "#3ceb07",
+                        "titleBar.inactiveForeground": "#e3e3e3"
+                },
+                "window.title": "CSnakes Course",
+                "window.titleBarStyle": "custom"
+        }
+}

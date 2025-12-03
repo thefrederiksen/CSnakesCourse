@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CSnakes.Runtime" Version="1.1.0" />
+    <PackageReference Include="CSnakes.Runtime" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
