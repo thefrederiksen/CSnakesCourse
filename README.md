@@ -1,5 +1,7 @@
 # Master CSnakes - C# and Python Interoperability
 
+**CSnakes Official Documentation**: https://tonybaloney.github.io/CSnakes/v1/
+
 ## A Comprehensive Journey into Seamless Cross-Language Development
 
 ![CSnakes Course](https://img.shields.io/badge/CSnakes-.NET%209.0-blue) ![Python](https://img.shields.io/badge/Python-3.9%2B-green) ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
