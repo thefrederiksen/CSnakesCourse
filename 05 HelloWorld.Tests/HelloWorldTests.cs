@@ -23,52 +23,43 @@ public class HelloWorldTests
     // Static fields to hold the Python environment for all tests
     private static IHost? _host;
     private static IPythonEnvironment? _pythonEnv;
-    private static TestContext? _testContext;
+
+    // Instance property - MSTest injects fresh TestContext for each test
+    public TestContext TestContext { get; set; } = null!;
 
     [AssemblyInitialize]
     public static void AssemblySetup(TestContext context)
     {
-        _testContext = context;
+        // Use the context parameter directly - don't store it statically
+        context.WriteLine("Setting up Python environment...");
 
-        try
-        {
-            _testContext.WriteLine("Setting up Python environment for HelloWorld tests...");
+        var builder = Host.CreateApplicationBuilder();
 
-            var builder = Host.CreateApplicationBuilder();
+        // Configure logging to reduce noise
+        builder.Logging.ClearProviders();
+        builder.Logging.AddConsole();
+        builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
-            // Configure logging to reduce noise
-            builder.Logging.ClearProviders();
-            builder.Logging.AddConsole();
-            builder.Logging.SetMinimumLevel(LogLevel.Warning);
+        // Python files are copied via project file configuration
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
-            // Python files are now automatically copied via project file configuration
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        builder.Services
+            .WithPython()
+            .WithHome(baseDir)
+            .FromRedistributable();
 
-            builder.Services
-                .WithPython()
-                .WithHome(baseDir)
-                .FromRedistributable();
+        _host = builder.Build();
+        _pythonEnv = _host.Services.GetRequiredService<IPythonEnvironment>();
 
-            _host = builder.Build();
-            _pythonEnv = _host.Services.GetRequiredService<IPythonEnvironment>();
-
-            _testContext.WriteLine("Python environment ready");
-        }
-        catch (Exception ex)
-        {
-            _testContext.WriteLine($"Failed to setup Python environment: {ex.Message}");
-            throw;
-        }
+        context.WriteLine("Python environment ready");
     }
 
     [AssemblyCleanup]
     public static void AssemblyCleanup()
     {
-        _testContext?.WriteLine("Cleaning up Python environment...");
         _host?.Dispose();
         _host = null;
         _pythonEnv = null;
-        _testContext = null;
     }
 
     [TestMethod]
@@ -82,9 +73,9 @@ public class HelloWorldTests
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
         // Output
-        _testContext?.WriteLine($"Input: {name}");
-        _testContext?.WriteLine($"Expected: {expected}");
-        _testContext?.WriteLine($"Actual: {result}");
+        TestContext.WriteLine($"Input: {name}");
+        TestContext.WriteLine($"Expected: {expected}");
+        TestContext.WriteLine($"Actual: {result}");
 
         // Assert
         Assert.AreEqual(expected, result);
@@ -101,9 +92,9 @@ public class HelloWorldTests
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
         // Output
-        _testContext?.WriteLine($"Input: (empty string)");
-        _testContext?.WriteLine($"Expected: {expected}");
-        _testContext?.WriteLine($"Actual: {result}");
+        TestContext.WriteLine($"Input: (empty string)");
+        TestContext.WriteLine($"Expected: {expected}");
+        TestContext.WriteLine($"Actual: {result}");
 
         // Assert
         Assert.AreEqual(expected, result);
@@ -120,9 +111,9 @@ public class HelloWorldTests
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
         // Output
-        _testContext?.WriteLine($"Input: {name}");
-        _testContext?.WriteLine($"Expected: {expected}");
-        _testContext?.WriteLine($"Actual: {result}");
+        TestContext.WriteLine($"Input: {name}");
+        TestContext.WriteLine($"Expected: {expected}");
+        TestContext.WriteLine($"Actual: {result}");
 
         // Assert
         Assert.AreEqual(expected, result);
