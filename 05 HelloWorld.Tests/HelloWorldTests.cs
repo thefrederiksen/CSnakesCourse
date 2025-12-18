@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+[assembly: DoNotParallelize]
+
 namespace HelloWorld.Tests;
 
 /// <summary>
@@ -16,30 +18,32 @@ namespace HelloWorld.Tests;
 /// - Manage test lifecycle with Python dependencies
 /// </summary>
 [TestClass]
-[DoNotParallelize] // Prevent parallel execution to avoid Python runtime conflicts
 public class HelloWorldTests
 {
     // Static fields to hold the Python environment for all tests
     private static IHost? _host;
     private static IPythonEnvironment? _pythonEnv;
+    private static TestContext? _testContext;
 
     [AssemblyInitialize]
     public static void AssemblySetup(TestContext context)
     {
+        _testContext = context;
+
         try
         {
-            Console.WriteLine("Setting up Python environment for HelloWorld tests...");
-            
+            _testContext.WriteLine("Setting up Python environment for HelloWorld tests...");
+
             var builder = Host.CreateApplicationBuilder();
-            
+
             // Configure logging to reduce noise
             builder.Logging.ClearProviders();
             builder.Logging.AddConsole();
             builder.Logging.SetMinimumLevel(LogLevel.Warning);
-            
+
             // Python files are now automatically copied via project file configuration
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            
+
             builder.Services
                 .WithPython()
                 .WithHome(baseDir)
@@ -47,12 +51,12 @@ public class HelloWorldTests
 
             _host = builder.Build();
             _pythonEnv = _host.Services.GetRequiredService<IPythonEnvironment>();
-            
-            Console.WriteLine("Python environment setup completed");
+
+            _testContext.WriteLine("Python environment ready");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to setup Python environment: {ex.Message}");
+            _testContext.WriteLine($"Failed to setup Python environment: {ex.Message}");
             throw;
         }
     }
@@ -60,10 +64,11 @@ public class HelloWorldTests
     [AssemblyCleanup]
     public static void AssemblyCleanup()
     {
-        Console.WriteLine("Cleaning up Python environment...");
+        _testContext?.WriteLine("Cleaning up Python environment...");
         _host?.Dispose();
         _host = null;
         _pythonEnv = null;
+        _testContext = null;
     }
 
     [TestMethod]
@@ -71,13 +76,18 @@ public class HelloWorldTests
     {
         // Arrange
         const string name = "Test User";
-        const string expectedMessage = "Hello, Test User - From Python!";
+        const string expected = "Hello, Test User - From Python!";
 
         // Act
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
+        // Output
+        _testContext?.WriteLine($"Input: {name}");
+        _testContext?.WriteLine($"Expected: {expected}");
+        _testContext?.WriteLine($"Actual: {result}");
+
         // Assert
-        Assert.AreEqual(expectedMessage, result);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -85,13 +95,18 @@ public class HelloWorldTests
     {
         // Arrange
         const string name = "";
-        const string expectedMessage = "Hello,  - From Python!";
+        const string expected = "Hello,  - From Python!";
 
         // Act
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
+        // Output
+        _testContext?.WriteLine($"Input: (empty string)");
+        _testContext?.WriteLine($"Expected: {expected}");
+        _testContext?.WriteLine($"Actual: {result}");
+
         // Assert
-        Assert.AreEqual(expectedMessage, result);
+        Assert.AreEqual(expected, result);
     }
 
     [TestMethod]
@@ -99,12 +114,17 @@ public class HelloWorldTests
     {
         // Arrange
         const string name = "Test@#$%User123";
-        const string expectedMessage = "Hello, Test@#$%User123 - From Python!";
+        const string expected = "Hello, Test@#$%User123 - From Python!";
 
         // Act
         var result = _pythonEnv!.Hello().HelloWorld(name);
 
+        // Output
+        _testContext?.WriteLine($"Input: {name}");
+        _testContext?.WriteLine($"Expected: {expected}");
+        _testContext?.WriteLine($"Actual: {result}");
+
         // Assert
-        Assert.AreEqual(expectedMessage, result);
+        Assert.AreEqual(expected, result);
     }
 }
