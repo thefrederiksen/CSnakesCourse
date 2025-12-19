@@ -1,0 +1,300 @@
+@page "/"
+@using CSnakes.Runtime
+@implements IAsyncDisposable
+@inject IPythonEnvironment PythonEnv
+@inject IConfiguration Configuration
+@inject IJSRuntime JS
+
+<div class="container">
+    <h1>Idea Assistant</h1>
+    <p class="subtitle">Talk to me about your ideas</p>
+
+    <div class="chat-container">
+        @foreach (var message in Messages)
+        {
+            <div class="message @(message.Role == "user" ? "user" : "assistant")">
+                <div class="message-header">
+                    @if (message.Role == "user")
+                    {
+                        <span>You</span>
+                    }
+                    else
+                    {
+                        <span>@message.AgentName</span>
+                    }
+                </div>
+                <div class="message-content">@message.Content</div>
+            </div>
+        }
+
+        @if (IsProcessing)
+        {
+            <div class="message assistant">
+                <div class="message-header">Thinking...</div>
+                <div class="message-content loading">...</div>
+            </div>
+        }
+    </div>
+
+    <div class="input-container">
+        <input type="text"
+               @bind="CurrentInput"
+               @bind:event="oninput"
+               @onkeypress="HandleKeyPress"
+               placeholder="Type a message..."
+               disabled="@(IsProcessing || IsRecording)" />
+
+        <button class="mic-button @(IsRecording ? "recording" : "")"
+                @onclick="StartRecording"
+                disabled="@(IsProcessing || IsRecording)"
+                title="Click to start recording">
+            MIC
+        </button>
+
+        <button class="send-button"
+                @onclick="HandleSend"
+                disabled="@(IsProcessing || (!IsRecording && string.IsNullOrWhiteSpace(CurrentInput)))">
+            Send
+        </button>
+    </div>
+
+    <div class="status">
+        @if (IsRecording)
+        {
+            <span class="recording-indicator">Recording... Click Send when done</span>
+        }
+        else if (IsProcessing)
+        {
+            <span>@(string.IsNullOrEmpty(StatusMessage) ? "Processing..." : StatusMessage)</span>
+        }
+        else if (!string.IsNullOrEmpty(StatusMessage))
+        {
+            <span>@StatusMessage</span>
+        }
+        else
+        {
+            <span class="hint">Type a message, or click MIC to speak</span>
+        }
+    </div>
+</div>
+
+@code {
+    private List<ChatMessage> Messages { get; set; } = new();
+    private string CurrentInput { get; set; } = "";
+    private bool IsProcessing { get; set; } = false;
+    private bool IsRecording { get; set; } = false;
+    private string StatusMessage { get; set; } = "";
+
+    private class ChatMessage
+    {
+        public string Role { get; set; } = "";
+        public string Content { get; set; } = "";
+        public string AgentName { get; set; } = "Assistant";
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(CurrentInput) && !IsRecording)
+        {
+            await HandleSend();
+        }
+    }
+
+    private async Task HandleSend()
+    {
+        if (IsProcessing) return;
+
+        if (IsRecording)
+        {
+            await StopRecordingAndSend();
+        }
+        else if (!string.IsNullOrWhiteSpace(CurrentInput))
+        {
+            await SendTextMessage();
+        }
+    }
+
+    private async Task SendTextMessage()
+    {
+        var userMessage = CurrentInput;
+        CurrentInput = "";
+        IsProcessing = true;
+        StatusMessage = "";
+
+        Messages.Add(new ChatMessage { Role = "user", Content = userMessage });
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var apiKey = GetApiKey();
+            var result = await CallAgent(userMessage, apiKey);
+            Messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Content = result.response,
+                AgentName = result.agentName
+            });
+        }
+        catch (Exception ex)
+        {
+            HandleError(ex);
+        }
+        finally
+        {
+            IsProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task StartRecording()
+    {
+        if (IsRecording || IsProcessing) return;
+
+        try
+        {
+            var isSupported = await JS.InvokeAsync<bool>("audioRecorder.isSupported");
+            if (!isSupported)
+            {
+                StatusMessage = "Audio recording not supported";
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var result = await JS.InvokeAsync<RecordingResult>("audioRecorder.startRecording");
+            if (result.Success)
+            {
+                IsRecording = true;
+                StatusMessage = "";
+            }
+            else
+            {
+                StatusMessage = $"Could not start recording: {result.Error}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Recording error: {ex.Message}";
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task StopRecordingAndSend()
+    {
+        if (!IsRecording) return;
+
+        IsRecording = false;
+        IsProcessing = true;
+        StatusMessage = "Transcribing...";
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Stop recording and transcribe via HTTP (not JS interop)
+            var result = await JS.InvokeAsync<TranscriptionResult>("audioRecorder.stopAndTranscribe");
+
+            if (!result.Success)
+            {
+                StatusMessage = $"Error: {result.Error}";
+                IsProcessing = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(result.Text))
+            {
+                StatusMessage = "Could not transcribe - try again";
+                IsProcessing = false;
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            StatusMessage = "Sending...";
+            await InvokeAsync(StateHasChanged);
+
+            Messages.Add(new ChatMessage { Role = "user", Content = result.Text });
+            await InvokeAsync(StateHasChanged);
+
+            var apiKey = GetApiKey();
+            var agentResult = await CallAgent(result.Text, apiKey);
+
+            Messages.Add(new ChatMessage
+            {
+                Role = "assistant",
+                Content = agentResult.response,
+                AgentName = agentResult.agentName
+            });
+            StatusMessage = "";
+        }
+        catch (Exception ex)
+        {
+            HandleError(ex);
+        }
+        finally
+        {
+            IsProcessing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private string GetApiKey()
+    {
+        var apiKey = Configuration["OPENAI_API_KEY"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY");
+        if (string.IsNullOrEmpty(apiKey))
+            throw new Exception("OPENAI_API_KEY not configured");
+        return apiKey;
+    }
+
+    private async Task<(string response, string agentName)> CallAgent(string message, string apiKey)
+    {
+        return await Task.Run(() =>
+        {
+            var history = Messages
+                .Where(m => m.Role == "user" || m.Role == "assistant")
+                .Select(m => new Dictionary<string, string>
+                {
+                    { "role", m.Role },
+                    { "content", m.Content }
+                })
+                .ToList();
+
+            if (history.Count > 0)
+                history.RemoveAt(history.Count - 1);
+
+            var agents = PythonEnv.IdeaAgents();
+            return agents.ProcessMessageWithHistory(message, history, apiKey);
+        });
+    }
+
+    private void HandleError(Exception ex)
+    {
+        StatusMessage = $"Error: {ex.Message}";
+        Messages.Add(new ChatMessage
+        {
+            Role = "assistant",
+            Content = $"Error: {ex.Message}",
+            AgentName = "System"
+        });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("audioRecorder.cancelRecording");
+        }
+        catch { }
+    }
+
+    private class RecordingResult
+    {
+        public bool Success { get; set; }
+        public string Error { get; set; } = "";
+    }
+
+    private class TranscriptionResult
+    {
+        public bool Success { get; set; }
+        public string Text { get; set; } = "";
+        public string Error { get; set; } = "";
+    }
+}

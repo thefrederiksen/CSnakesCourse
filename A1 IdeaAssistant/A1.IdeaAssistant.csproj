@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IdeaAssistant</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CSnakes.Runtime" Version="1.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="PythonAgents\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="PythonAgents\Src\idea_agents.py" />
+    <AdditionalFiles Include="PythonAgents\Src\ideas_tools.py" />
+    <AdditionalFiles Include="PythonAgents\Src\transcribe.py" />
+  </ItemGroup>
+
+</Project>
