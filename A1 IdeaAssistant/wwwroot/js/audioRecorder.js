@@ -1,6 +1,14 @@
-// Audio Recorder for Idea Assistant
-// Uses MediaRecorder API to capture audio from the microphone
+// Audio Recorder and UI helpers for Idea Assistant
 
+// Scroll chat to bottom
+window.scrollChatToBottom = function() {
+    const chat = document.getElementById('chatContainer');
+    if (chat) {
+        chat.scrollTop = chat.scrollHeight;
+    }
+};
+
+// Audio Recording - Uses MediaRecorder API
 let mediaRecorder = null;
 let audioChunks = [];
 let recordingStream = null;

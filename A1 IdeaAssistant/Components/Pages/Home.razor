@@ -9,7 +9,7 @@
     <h1>Idea Assistant</h1>
     <p class="subtitle">Talk to me about your ideas</p>
 
-    <div class="chat-container">
+    <div class="chat-container" id="chatContainer">
         @foreach (var message in Messages)
         {
             <div class="message @(message.Role == "user" ? "user" : "assistant")">
@@ -123,6 +123,7 @@
 
         Messages.Add(new ChatMessage { Role = "user", Content = userMessage });
         await InvokeAsync(StateHasChanged);
+        await ScrollToBottom();
 
         try
         {
@@ -143,6 +144,7 @@
         {
             IsProcessing = false;
             await InvokeAsync(StateHasChanged);
+            await ScrollToBottom();
         }
     }
 
@@ -213,6 +215,7 @@
 
             Messages.Add(new ChatMessage { Role = "user", Content = result.Text });
             await InvokeAsync(StateHasChanged);
+            await ScrollToBottom();
 
             var apiKey = GetApiKey();
             var agentResult = await CallAgent(result.Text, apiKey);
@@ -233,6 +236,7 @@
         {
             IsProcessing = false;
             await InvokeAsync(StateHasChanged);
+            await ScrollToBottom();
         }
     }
 
@@ -263,6 +267,15 @@
             var agents = PythonEnv.IdeaAgents();
             return agents.ProcessMessageWithHistory(message, history, apiKey);
         });
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("scrollChatToBottom");
+        }
+        catch { }
     }
 
     private void HandleError(Exception ex)

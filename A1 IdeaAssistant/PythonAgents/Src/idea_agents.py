@@ -9,32 +9,8 @@ Demonstrates:
 - Input guardrails
 """
 
-from agents import Agent, Runner, function_tool, WebSearchTool, GuardrailFunctionOutput, input_guardrail, RunContextWrapper
+from agents import Agent, Runner, function_tool, WebSearchTool
 from ideas_tools import add_idea, list_ideas, search_ideas, get_idea_count
-
-
-# Input guardrail to validate user messages
-@input_guardrail
-async def validate_input(ctx: RunContextWrapper, agent: Agent, input: str) -> GuardrailFunctionOutput:
-    """Check for off-topic or inappropriate input."""
-    # Simple keyword check - production would use a classifier
-    off_topic_keywords = ["weather", "recipe", "sports score"]
-
-    # Handle string or list input
-    input_text = input if isinstance(input, str) else str(input)
-    input_lower = input_text.lower()
-
-    for keyword in off_topic_keywords:
-        if keyword in input_lower:
-            return GuardrailFunctionOutput(
-                output_info={"reason": f"Off-topic: {keyword}"},
-                tripwire_triggered=True
-            )
-
-    return GuardrailFunctionOutput(
-        output_info={"status": "valid"},
-        tripwire_triggered=False
-    )
 
 
 # Ideas Agent - manages your idea collection
@@ -75,8 +51,7 @@ triage_agent = Agent(
 
 If the user's intent is unclear, ask a clarifying question.
 Never try to handle requests yourself - always hand off to a specialist.""",
-    handoffs=[ideas_agent, research_agent],
-    input_guardrails=[validate_input]
+    handoffs=[ideas_agent, research_agent]
 )
 
 
