@@ -68,7 +68,13 @@ namespace Generators_Sample
 
         static async Task TestAsyncProgressBar(IPythonEnvironment pythonEnv)
         {
-            Console.WriteLine("Testing Python async progress_generator_async...");
+            // Note: CSnakes does NOT support Python async generators (AsyncGenerator).
+            // The workaround is to use a synchronous generator and wrap it in Task.Run().
+            // This gives the same user experience (non-blocking streaming) without
+            // requiring CSnakes async generator support. This is the pattern used
+            // in BlazorTrader production code.
+
+            Console.WriteLine("Testing Python progress_bar_with_delay (sync generator, async C# wrapper)...");
             using var cts = new CancellationTokenSource();
             var dotTask = Task.Run(async () =>
             {
@@ -79,16 +85,18 @@ namespace Generators_Sample
                 }
             }, cts.Token);
 
-            // Await the async generator from Python (fix: use AsAsyncEnumerable<int>())
-            var pyObj = await pythonEnv.GeneratorsSample().AsyncProgressBar();
-            foreach (var progress in pyObj.AsEnumerable<int>())
+            // Run the sync generator in a background task for non-blocking behavior
+            await Task.Run(() =>
             {
-                if (progress % 10 == 0)
+                foreach (var progress in pythonEnv.GeneratorsSample().ProgressBarWithDelay())
+                {
                     Console.Write($" {progress}");
-            }
+                }
+            });
+
             cts.Cancel();
             try { await dotTask; } catch (OperationCanceledException) { }
-            Console.WriteLine("\nAsync generator done!");
+            Console.WriteLine("\nAsync-wrapped generator done!");
         }
     }
 }

@@ -1,7 +1,5 @@
-import asyncio
 import time
 from typing import Generator
-from typing import AsyncGenerator
 
 def get_version() -> str:
     """Return the fixed version string for this code"""
@@ -17,10 +15,16 @@ def progress_generator() -> Generator[int, None, None]:
         yield i
 
 
+def progress_bar_with_delay() -> Generator[int, None, None]:
+    """
+    Synchronous generator for progress reporting with delay.
 
-async def async_progress_bar() -> AsyncGenerator[int, None]:
+    Note: CSnakes does not support Python async generators (AsyncGenerator).
+    Use sync generators and run them in C# Task.Run() for async behavior.
+    This is the same pattern used in BlazorTrader production code.
+    """
     for i in range(0, 101, 10):
-        await asyncio.sleep(0.5)
+        time.sleep(0.5)  # Simulate work
         yield i
 
 
