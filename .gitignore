@@ -494,3 +494,5 @@ python-*-embed-*/
 .env.local
 .env.*.local
 /nul
+
+.claude/
