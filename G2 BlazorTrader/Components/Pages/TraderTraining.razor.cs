@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace BlazorTrader.Components.Pages;
 
-public partial class TraderTraining : ComponentBase
+public partial class TraderTraining : BaseTraderPage
 {
     private List<TrainingModule> trainingModules = new();
     private int completedModules => trainingModules.Count(m => m.IsCompleted);
@@ -42,31 +42,9 @@ public partial class TraderTraining : ComponentBase
     private string? pythonWarningMessage = null;
     private bool showClearDataWarning = false;
 
-    [Inject]
-    public required IPythonEnvironment PythonEnv { get; set; }
 
-    [Inject]
-    public required IConfiguration Configuration { get; set; }
 
-    /// <summary>
-    /// Gets the user data directory for storing S&P 500 data and indicators.
-    /// Uses the standard Windows ApplicationData folder for user-specific data.
-    /// </summary>
-    public static string UserDataDirectory
-    {
-        get
-        {
-            var userDataPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
-                "BlazorTrader"
-            );
-            
-            // Ensure the directory exists
-            Directory.CreateDirectory(userDataPath);
-            
-            return userDataPath;
-        }
-    }
+
 
 
     private int completedSteps =>
@@ -117,23 +95,7 @@ public partial class TraderTraining : ComponentBase
         return Task.CompletedTask;
     }
 
-    private void LogException(string operation, Exception ex)
-    {
-        Console.WriteLine($"Error {operation}: {ex.Message}");
-        
-        // Print inner exception details if available
-        if (ex.InnerException != null)
-        {
-            Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-            Console.WriteLine($"Inner Exception Type: {ex.InnerException.GetType().Name}");
-            Console.WriteLine("Inner Exception Stack Trace:");
-            Console.WriteLine(ex.InnerException.StackTrace);
-        }
-        
-        // Print full exception details
-        Console.WriteLine("Full Exception:");
-        Console.WriteLine(ex.ToString());
-    }
+
 
     private async Task DownloadSpData()
     {
@@ -168,8 +130,7 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            LogException("downloading S&P data", ex);
-            downloadCompletionMessage = "❌ Download failed. Please check the console for error details.";
+            downloadCompletionMessage = HandleException("downloading S&P data", ex);
         }
         finally
         {
@@ -213,8 +174,7 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            LogException("creating indicators", ex);
-            indicatorsCompletionMessage = "❌ Indicator calculation failed. Please check the console for error details.";
+            indicatorsCompletionMessage = HandleException("creating indicators", ex);
             pythonWarningMessage = ex.Message;
         }
         finally
@@ -257,8 +217,7 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            LogException("creating training data", ex);
-            trainingDataCompletionMessage = "❌ Training data creation failed. Please check the console for error details.";
+            trainingDataCompletionMessage = HandleException("creating training data", ex);
             pythonWarningMessage = ex.Message;
         }
         finally
@@ -320,17 +279,8 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            LogException("training XGBoost", ex);
-            var details = ex.Message;
-            if (ex.InnerException != null)
-            {
-                details += "\nInner Exception: " + ex.InnerException.Message;
-                details += "\nInner Exception Type: " + ex.InnerException.GetType().Name;
-                details += "\nInner Exception Stack Trace:\n" + ex.InnerException.StackTrace;
-            }
-            details += "\nFull Exception:\n" + ex.ToString();
-            xgboostCompletionMessage = "❌ XGBoost training failed. Please check the console for error details.";
-            pythonWarningMessage = details;
+            xgboostCompletionMessage = HandleException("training XGBoost", ex);
+            pythonWarningMessage = ex.ToString();
         }
         finally
         {
@@ -356,7 +306,7 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            trainingExplanation = $"Error explaining training results: {ex.Message}\n{ex.InnerException?.Message}\n{ex.StackTrace}";
+            trainingExplanation = HandleException("explaining training results", ex);
         }
         finally
         {
@@ -402,7 +352,7 @@ public partial class TraderTraining : ComponentBase
         }
         catch (Exception ex)
         {
-            pythonWarningMessage = $"Error clearing data: {ex.Message}\n{ex.InnerException?.Message}\n{ex.StackTrace}";
+            pythonWarningMessage = HandleException("clearing data", ex);
             StateHasChanged();
         }
     }

@@ -21,7 +21,7 @@ public class TradingPlanData
     public DateTime LastUpdated { get; set; }
 }
 
-public partial class SundayTrades : ComponentBase, IDisposable
+public partial class SundayTrades : BaseTraderPage, IDisposable
 {
     private int totalTrades = 0;
     private double successRate;
@@ -46,11 +46,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
 
     private const string TradesFilePath = "wwwroot/data/sundaytrades.json";
 
-    [Inject]
-    public required IPythonEnvironment PythonEnv { get; set; }
 
-    [Inject]
-    public required IConfiguration Configuration { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -88,9 +84,10 @@ public partial class SundayTrades : ComponentBase, IDisposable
             // Calculate statistics
             await UpdateStatisticsAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Handle any errors (could add logging here)
+            // Handle any errors
+            HandleException("loading trade data", ex);
             trades = new List<Trade>();
             totalTrades = 0;
             successRate = 0;
@@ -196,9 +193,9 @@ public partial class SundayTrades : ComponentBase, IDisposable
             // Write to file
             await File.WriteAllTextAsync(TradesFilePath, json);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Handle any errors (could add logging here)
+            HandleException("saving trades to file", ex);
         }
     }
 
@@ -221,7 +218,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
     {
         try
         {
-            var predictionsFilePath = Path.Combine(TraderTraining.UserDataDirectory, "logs", "predictions.json");
+            var predictionsFilePath = Path.Combine(UserDataDirectory, "logs", "predictions.json");
             if (File.Exists(predictionsFilePath))
             {
                 var json = await File.ReadAllTextAsync(predictionsFilePath);
@@ -240,11 +237,9 @@ public partial class SundayTrades : ComponentBase, IDisposable
                     StateHasChanged();
                 }
             }
-        }
         catch (Exception ex)
         {
-            // Handle any errors silently - predictions are optional
-            Console.WriteLine($"Error loading saved predictions: {ex.Message}");
+            HandleException("loading saved predictions", ex);
         }
     }
 
@@ -265,7 +260,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         foreach (PredictionRecord record in _mustBuyList)
         {
             // Get the latest price for the symbol
-            var latestPriceReturn = PythonEnv.GLlmKnowledge().LookupLatestPrice(TraderTraining.UserDataDirectory, record.Symbol);
+            var latestPriceReturn = PythonEnv.GLlmKnowledge().LookupLatestPrice(UserDataDirectory, record.Symbol);
             string iso = latestPriceReturn.Item1.GetAttr("isoformat").Call().As<string>();
             DateTime latestPriceDate = DateTime.Parse(iso);
 
@@ -285,14 +280,13 @@ public partial class SundayTrades : ComponentBase, IDisposable
                 try
                 {
                     // Call Python function to get latest price
-                    (PyObject, double) result = PythonEnv.GLlmKnowledge().LookupLatestPrice(TraderTraining.UserDataDirectory, trade.Symbol);
+                    (PyObject, double) result = PythonEnv.GLlmKnowledge().LookupLatestPrice(UserDataDirectory, trade.Symbol);
                     // result is a tuple of (date, price)
                     var price = result.Item2; // Get the price from the tuple
                     trade.LatestPrice = price;
-                }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error getting latest price for {trade.Symbol}: {ex.Message}");
+                    HandleException($"getting latest price for {trade.Symbol}", ex);
                     trade.LatestPrice = null;
                 }
             }
@@ -300,7 +294,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading latest prices: {ex.Message}");
+            HandleException("loading latest prices", ex);
         }
     }
 
@@ -308,7 +302,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
     {
         try
         {
-            var tradingPlanFilePath = Path.Combine(TraderTraining.UserDataDirectory, "logs", "tradingplan.json");
+            var tradingPlanFilePath = Path.Combine(UserDataDirectory, "logs", "tradingplan.json");
             if (File.Exists(tradingPlanFilePath))
             {
                 var json = await File.ReadAllTextAsync(tradingPlanFilePath);
@@ -323,7 +317,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading trading plan instructions: {ex.Message}");
+            HandleException("loading trading plan instructions", ex);
         }
     }
 
@@ -331,7 +325,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
     {
         try
         {
-            var logDir = Path.Combine(TraderTraining.UserDataDirectory, "logs");
+            var logDir = Path.Combine(UserDataDirectory, "logs");
             if (!Directory.Exists(logDir))
             {
                 Directory.CreateDirectory(logDir);
@@ -357,7 +351,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving trading plan instructions: {ex.Message}");
+            HandleException("saving trading plan instructions", ex);
         }
     }
 
@@ -455,7 +449,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         StateHasChanged();
 
         // Check for required model file before running predictions
-        var modelsDir = Path.Combine(TraderTraining.UserDataDirectory, "models");
+        var modelsDir = Path.Combine(UserDataDirectory, "models");
         var modelPath = Path.Combine(modelsDir, "stage1_model.joblib");
         if (!System.IO.File.Exists(modelPath))
         {
@@ -469,7 +463,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
         {
             await Task.Run(async () =>
             {
-                var pythonGenerator = PythonEnv.DTrainXgboost().PredictLatestForAllSymbols(TraderTraining.UserDataDirectory);
+                var pythonGenerator = PythonEnv.DTrainXgboost().PredictLatestForAllSymbols(UserDataDirectory);
                 IReadOnlyList<IReadOnlyDictionary<string, PyObject>>? result = null;
                 while (pythonGenerator.MoveNext())
                 {
@@ -507,7 +501,7 @@ public partial class SundayTrades : ComponentBase, IDisposable
                         _allPredictions = parsedResults;
 
                         // Save predictions to json file in Log directory
-                        var logDir = Path.Combine(TraderTraining.UserDataDirectory, "logs");
+                        var logDir = Path.Combine(UserDataDirectory, "logs");
                         if (!Directory.Exists(logDir))
                         {
                             Directory.CreateDirectory(logDir);
@@ -528,11 +522,9 @@ public partial class SundayTrades : ComponentBase, IDisposable
                     StateHasChanged();
                 });
             });
-        }
         catch (Exception ex)
         {
-            var errorMessage = $"❌ Prediction run failed: {ex}";
-            predictionsCompletionMessage = errorMessage;
+            predictionsCompletionMessage = HandleException("prediction run", ex);
         }
         finally
         {
@@ -594,10 +586,9 @@ public partial class SundayTrades : ComponentBase, IDisposable
             {
                 _tradingPlan = PythonEnv.GLlmKnowledge().CallOpenaiModel("o4-mini", _tradingPlan, prompt, openAiKey);
             }
-        }
         catch (Exception ex)
         {
-            _tradingPlan = $"Error generating trading plan: {ex}";
+            _tradingPlan = HandleException("generating trading plan", ex);
         }
         finally
         {

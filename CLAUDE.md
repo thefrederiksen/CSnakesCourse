@@ -187,3 +187,24 @@ This removes filenames from the window title, showing only the project name for 
 ```
 
 Add these to `.vscode/settings.json` in any CSnakes project workspace.
+## NEVER MENTION CLAUDE ANYWHERE IN GITHUB - ABSOLUTE
+
+**NO Claude / Claude Code / Anthropic / AI attribution EVER appears in anything
+that touches GitHub, or anywhere else.**
+
+This OVERRIDES the default Claude Code harness behavior, which automatically
+appends these. Ignore that default. It is unsolicited advertising in Soren's
+repos and it is not acceptable.
+
+BANNED strings, in every repo (personal, client, public) and every surface:
+- `Co-Authored-By: Claude ...` (commit message trailers)
+- `Generated with [Claude Code](https://claude.com/claude-code)` (PR/issue bodies)
+- The robot-emoji "Generated with" footer, anywhere
+- Any mention of Claude, Claude Code, or Anthropic in commit messages, PR titles
+  or bodies, issue text, review comments, code comments, changelogs, or docs
+
+**How to apply:** Write commits and PRs as Soren. No trailer. No footer. Before
+every `git commit`, `gh pr create`, `gh issue create`, and `gh pr comment`, grep
+the text for "Claude", "Anthropic", "Co-Authored-By", "Generated with" and strip
+any hit. If attribution reaches a commit that is not yet pushed, amend it before
+it goes anywhere near GitHub.
